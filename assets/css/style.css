@@ -1,0 +1,549 @@
+/* Reset Básico y Estilos Generales */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --border-radius: 5px;
+}
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: #f4f7f6;
+    color: var(--dark-color);
+    line-height: 1.6;
+}
+
+.container {
+    width: 100%;
+    padding: 2rem; /* Un padding consistente para que el contenido no toque los bordes */
+    box-sizing: border-box; /* Asegura que el padding se incluya en el ancho total */
+}
+
+/* Encabezados */
+header {
+    padding: 1rem 2rem;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.admin-header { background-color: var(--dark-color); }
+.member-header { background-color: var(--primary-color); }
+
+header h1 { margin: 0; font-size: 1.5rem; }
+header nav a {
+    color: #fff;
+    text-decoration: none;
+    margin-left: 15px;
+    padding: 5px 10px;
+    border-radius: var(--border-radius);
+    transition: background-color 0.3s;
+}
+header nav a:hover { background-color: rgba(255,255,255,0.2); }
+.logout-btn { background-color: var(--danger-color); }
+.logout-btn:hover { background-color: #c82333; }
+
+
+.form-group { margin-bottom: 15px; }
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="datetime-local"],
+.form-group input[type="date"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    box-sizing: border-box;
+}
+textarea { resize: vertical; min-height: 100px; }
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    color: #fff;
+    background-color: var(--primary-color);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+}
+.btn-success { background-color: var(--success-color); }
+.btn-danger { background-color: var(--danger-color); }
+.btn-secondary { background-color: var(--secondary-color); }
+.btn-warning { background-color: var(--warning-color); color: #212529; }
+
+/* Tablas */
+.table-wrapper { overflow-x: auto; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+table th, table td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+table th { background-color: #f2f2f2; }
+table tr:nth-child(even) { background-color: #f9f9f9; }
+table tr:hover { background-color: #f1f1f1; }
+.actions a, .actions button { margin-right: 5px; }
+
+
+.card {
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.card h3 { margin-top: 0; }
+
+/* Prioridades y Estados */
+.prioridad-alta { border-left: 5px solid var(--danger-color); }
+.prioridad-media { border-left: 5px solid var(--warning-color); }
+.prioridad-baja { border-left: 5px solid var(--primary-color); }
+
+.estado-pendiente { color: var(--secondary-color); }
+.estado-finalizada_usuario { color: var(--warning-color); }
+.estado-cerrada { color: var(--success-color); }
+
+/* Sistema de Comentarios / Tickets */
+.chat-box {
+    margin-top: 30px;
+    border: 1px solid #ccc;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    max-height: 400px;
+    overflow-y: auto;
+}
+.comment {
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: var(--border-radius);
+}
+.comment p { margin: 0; }
+.comment .meta { font-size: 0.8rem; color: #666; }
+.comment-admin { background-color: #e9ecef; }
+.comment-miembro { background-color: #d1e7fd; }
+
+/* Login */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 30px;
+    background: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.login-container h2 { text-align: center; margin-bottom: 20px; }
+
+/* Notificaciones */
+.alert {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    border-radius: var(--border-radius);
+}
+.alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; }
+.alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; }
+.alert-info { color: #0c5460; background-color: #d1ecf1; border-color: #bee5eb; }
+/* ====== INICIO: ESTILOS PARA LAYOUT CON SIDEBAR (VERSIÓN CORREGIDA) ====== */
+
+/* --- Estilos para Escritorio (Por defecto) --- */
+
+:root {
+    --sidebar-width: 240px;
+    --sidebar-bg: var(--dark-color);
+    --sidebar-text-color: #f1f1f1;
+    --sidebar-link-hover-bg: #4a5568;
+}
+
+#sidebar-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    height: 100vh;
+    background-color: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+#close-btn { display: none; } /* Oculto en escritorio */
+
+.sidebar-header {
+    padding: 1.2rem;
+    color: white;
+    background-color: rgba(0,0,0,0.2);
+    text-align: center;
+}
+.sidebar-header h3 { margin: 0; }
+
+#sidebar-nav a {
+    padding: 15px 20px;
+    color: var(--sidebar-text-color);
+    text-decoration: none;
+    display: block;
+    border-bottom: 1px solid var(--sidebar-link-hover-bg);
+    transition: background-color 0.2s;
+}
+#sidebar-nav a:hover { background-color: var(--sidebar-link-hover-bg); }
+#sidebar-nav .logout-btn { margin-top: auto; }
+
+.main-content {
+    margin-left: var(--sidebar-width);
+}
+
+#hamburger-btn, #overlay {
+    display: none;
+}
+
+header {
+    width: auto;
+    display: flex;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: #fff;
+    border-bottom: 1px solid #e7e7e7;
+    color: var(--dark-color);
+}
+.admin-header, .member-header {
+    background-color: #fff;
+}
+
+
+/* --- Estilos para Móviles (Media Query) --- */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+    }
+
+    #sidebar-nav {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+    }
+    #sidebar-nav.sidebar-open {
+        transform: translateX(0);
+    }
+    
+    #close-btn {
+        display: block;
+        position: absolute;
+        top: 10px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 2.5rem;
+        line-height: 1;
+        cursor: pointer;
+    }
+    
+    #hamburger-btn {
+        display: block;
+        background: none;
+        border: none;
+        color: var(--dark-color);
+        font-size: 1.8rem;
+        cursor: pointer;
+    }
+    
+    header {
+        justify-content: flex-start;
+        gap: 15px;
+    }
+    header h1 {
+        font-size: 1.2rem;
+        flex-grow: 1;
+        text-align: left;
+    }
+
+    #overlay.active {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+    }
+    
+    .fc .fc-toolbar-title {
+        font-size: 1.25em;
+    }
+    .fc .fc-button {
+        padding: 0.3em 0.5em;
+        font-size: 0.9em;
+    }
+    
+    .login-container {
+        width: 90%;
+        padding: 20px;
+        margin-top: 20px;
+    }
+
+    /* --- INICIO DE LA MODIFICACIÓN: AJUSTE DEL LOGO --- */
+    .login-logo {
+        max-width: 150px; /* Reducimos el ancho máximo del logo en móviles */
+        margin-bottom: 1rem; /* Reducimos un poco el espacio inferior */
+    }
+    /* --- FIN DE LA MODIFICACIÓN --- */
+}
+/* ====== FIN: ESTILOS PARA LAYOUT CON SIDEBAR (VERSIÓN CORREGIDA) ====== */
+/* ====== INICIO: ESTILOS PARA FOOTER PEGAJOSO (STICKY FOOTER) ====== */
+
+/* Hacemos que la envoltura principal del contenido sea un contenedor flexbox vertical */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ocupa, como mínimo, el 100% de la altura de la ventana */
+}
+
+/* Hacemos que el elemento <main> (donde va el contenido principal) 
+  crezca para ocupar todo el espacio vertical disponible.
+  Esto empuja al <footer> hacia abajo.
+*/
+main.container {
+    flex-grow: 1;
+}
+
+/* ====== FIN: ESTILOS PARA FOOTER PEGAJOSO (STICKY FOOTER) ====== */
+/* ====== INICIO: CLASE DE AYUDA PARA FORMULARIOS ====== */
+
+/* Usaremos esta clase en las tarjetas que contengan formularios
+   para que no se estiren al 100% de la pantalla. */
+.form-card {
+    max-width: 700px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ====== FIN: CLASE DE AYUDA PARA FORMULARIOS ====== */
+/* ====== INICIO: ESTILOS PARA LA COLUMNA DE DÍAS RESTANTES ====== */
+
+.texto-vencido {
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+.texto-urgente {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+.texto-normal {
+    color: var(--success-color);
+}
+
+/* ====== FIN: ESTILOS PARA LA COLUMNA DE DÍAS RESTANTES ====== */
+/* ====== INICIO: ESTILOS PARA PREVISUALIZACIÓN DE RECURSOS ====== */
+
+.resource-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.resource-item {
+    position: relative;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    text-align: center;
+    background-color: #f9f9f9;
+}
+
+.resource-item a.resource-link {
+    display: block;
+    text-decoration: none;
+    color: var(--dark-color);
+}
+
+.resource-item .preview-image {
+    width: 100%;
+    height: 90px;
+    object-fit: cover; /* Asegura que la imagen cubra el espacio sin deformarse */
+}
+
+.resource-item .preview-video {
+    width: 100%;
+    height: 90px;
+    background-color: #000;
+}
+
+.resource-item .file-icon {
+    font-size: 3rem;
+    line-height: 1;
+    padding-top: 15px;
+    height: 75px;
+    color: var(--secondary-color);
+}
+
+.resource-item .file-name {
+    display: block;
+    padding: 8px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background-color: #fff;
+    border-top: 1px solid #ddd;
+}
+
+.resource-item .btn-delete-resource {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(220, 53, 69, 0.8); /* Rojo semi-transparente */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+    line-height: 24px;
+    text-align: center;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: none;
+    opacity: 0; /* Oculto por defecto */
+    transition: opacity 0.2s;
+}
+
+.resource-item:hover .btn-delete-resource {
+    opacity: 1; /* Visible al pasar el ratón */
+}
+
+
+/* ====== FIN: ESTILOS PARA PREVISUALIZACIÓN DE RECURSOS ====== */
+/* ====== INICIO: ESTILOS PARA ICONOS EN TABLAS ====== */
+
+/* Espacio entre el icono y el texto dentro de un botón o enlace */
+.btn i, .actions a i {
+    margin-right: 6px;
+}
+
+/* Contenedor del icono y texto para alineación vertical */
+.icon-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Espacio entre el icono y el texto */
+}
+
+/* Colores para los iconos de prioridad */
+.icon-prioridad-alta { color: var(--danger-color); }
+.icon-prioridad-media { color: var(--warning-color); }
+.icon-prioridad-baja { color: var(--primary-color); }
+
+/* Colores para los iconos de estado */
+.icon-estado-pendiente { color: var(--secondary-color); }
+.icon-estado-finalizada_usuario { color: var(--warning-color); }
+.icon-estado-cerrada { color: var(--success-color); }
+
+
+/* ====== FIN: ESTILOS PARA ICONOS EN TABLAS ====== */
+/* ====== INICIO: ESTILOS PARA LA PÁGINA DE ANALÍTICAS ====== */
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+}
+
+.chart-container {
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    border: 1px solid #e7e7e7;
+}
+
+.analytics-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.analytics-list li {
+    display: flex;
+    align-items: center;
+    padding: 10px 5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.analytics-list li:last-child {
+    border-bottom: none;
+}
+
+.analytics-list i {
+    margin-right: 15px;
+    font-size: 1.2rem;
+    width: 25px; /* Ancho fijo para alineación */
+    text-align: center;
+}
+
+/* ====== FIN: ESTILOS PARA LA PÁGINA DE ANALÍTICAS ====== */
+/* ====== INICIO: ESTILO PARA LISTA DE VENCIDAS ====== */
+
+.analytics-list .task-overdue i {
+    color: var(--danger-color);
+}
+
+/* ====== FIN: ESTILO PARA LISTA DE VENCIDAS ====== */
+/* ====== INICIO: AJUSTES PARA CALENDARIO MÓVIL ====== */
+
+@media (max-width: 768px) {
+    /* Reduce el tamaño del título principal del calendario en móviles */
+    .fc .fc-toolbar-title {
+        font-size: 1.25em; /* Un tamaño más razonable para móviles */
+    }
+
+    /* Ajusta el tamaño de los botones de navegación del calendario */
+    .fc .fc-button {
+        padding: 0.3em 0.5em;
+        font-size: 0.9em;
+    }
+}
+
+/* ====== FIN: AJUSTES PARA CALENDARIO MÓVIL ====== */
+/* ====== INICIO: ESTILOS PARA LOGIN Y FAVICON ====== */
+
+.login-logo {
+    max-width: 180px; /* Ajusta el tamaño de tu logo */
+    height: auto;
+    display: block;
+    margin: 0 auto 1.5rem auto; /* Centrado y con espacio inferior */
+}
+
+/* Hacemos que el contenedor del login sea más flexible en móviles */
+@media (max-width: 768px) {
+    .login-container {
+        width: 90%;
+        padding: 20px;
+        margin-top: 20px;
+    }
+}
+
+/* ====== FIN: ESTILOS PARA LOGIN Y FAVICON ====== */
