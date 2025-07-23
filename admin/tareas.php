@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_seleccionado
     if ($rol_usuario_actual === 'admin') {
         $ids_tareas = isset($_POST['ids_tareas']) ? $_POST['ids_tareas'] : [];
         if (!empty($ids_tareas)) { try { $placeholders = implode(',', array_fill(0, count($ids_tareas), '?')); $stmt = $pdo->prepare("DELETE FROM tareas WHERE id_tarea IN ($placeholders)"); $stmt->execute($ids_tareas); $mensaje = "Tareas seleccionadas eliminadas."; } catch (PDOException $e) { $error = "Error al eliminar las tareas."; }
-        } else { $error = "No se seleccionó ninguna tarea."; }
+        } else { $error = "No se seleccion¨® ninguna tarea."; }
     }
 }
 $sql = "SELECT t.*, u.nombre_completo as creador FROM tareas t JOIN usuarios u ON t.id_admin_creador = u.id_usuario";
@@ -44,7 +44,7 @@ include '../includes/header_admin.php';
 </div>
 <form action="tareas.php" method="POST">
     <?php if ($rol_usuario_actual === 'admin'): ?>
-    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('¿Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
+    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('0†7Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
     <?php endif; ?>
     <div class="table-wrapper">
         <table>

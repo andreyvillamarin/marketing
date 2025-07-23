@@ -69,14 +69,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['agregar_comentario'])) {
         $comentario = trim($_POST['comentario']);
         if (!empty($comentario)) {
-            try { $stmt = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)"); $stmt->execute([$id_tarea, $_SESSION['user_id'], $comentario]); $mensaje = "Comentario agregado."; } catch (PDOException $e) { $error = "Error al agregar el comentario."; }
+            $pdo->beginTransaction();
+            try {
+                $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)");
+                $stmt_insert->execute([$id_tarea, $_SESSION['user_id'], $comentario]);
+
+                $stmt_usuarios = $pdo->prepare("
+                    SELECT u.email, u.nombre_completo, u.id_usuario FROM usuarios u
+                    JOIN tareas_asignadas ta ON u.id_usuario = ta.id_usuario
+                    WHERE ta.id_tarea = ?
+                    UNION
+                    SELECT u.email, u.nombre_completo, u.id_usuario FROM usuarios u
+                    JOIN tareas t ON u.id_usuario = t.id_admin_creador
+                    WHERE t.id_tarea = ?
+                ");
+                $stmt_usuarios->execute([$id_tarea, $id_tarea]);
+                $usuarios_a_notificar = $stmt_usuarios->fetchAll(PDO::FETCH_UNIQUE);
+
+                $stmt_tarea_info = $pdo->prepare("SELECT nombre_tarea FROM tareas WHERE id_tarea = ?");
+                $stmt_tarea_info->execute([$id_tarea]);
+                $nombre_tarea = $stmt_tarea_info->fetchColumn();
+                
+                $nombre_comentador = $_SESSION['user_nombre'];
+                $asunto = "Nuevo comentario en la tarea: " . $nombre_tarea;
+                $cuerpo = "<h1>Nuevo Comentario</h1>
+                           <p>Hola,</p>
+                           <p>El usuario <strong>".e($nombre_comentador)."</strong> ha añadido un nuevo comentario a la tarea '<strong>".e($nombre_tarea)."</strong>'.</p>
+                           <p><strong>Comentario:</strong></p>
+                           <blockquote style='border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px;'><p>".nl2br(e($comentario))."</p></blockquote>
+                           <p>Puedes ver la tarea y responder desde la plataforma.</p>";
+
+                foreach ($usuarios_a_notificar as $id_usuario => $usuario) {
+                    if ($id_usuario != $_SESSION['user_id']) {
+                        enviar_email($usuario['email'], $usuario['nombre_completo'], $asunto, $cuerpo);
+                    }
+                }
+
+                $pdo->commit();
+                $mensaje = "Comentario agregado y notificado.";
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $error = "Error al agregar el comentario: " . $e->getMessage();
+            }
         }
     }
     if (isset($_POST['cerrar_tarea'])) {
         if ($_SESSION['user_rol'] === 'admin') {
-            try { $stmt = $pdo->prepare("UPDATE tareas SET estado = 'completada' WHERE id_tarea = ?"); $stmt->execute([$id_tarea]); $mensaje = "¡Tarea marcada como completada!"; }
-            catch (PDOException $e) { $error = "Error al completar la tarea."; }
-        } else { $error = "No tienes permiso para esta acción."; }
+            $pdo->beginTransaction();
+            try {
+                $stmt_update = $pdo->prepare("UPDATE tareas SET estado = 'completada' WHERE id_tarea = ?");
+                $stmt_update->execute([$id_tarea]);
+                $stmt_tarea_info = $pdo->prepare("SELECT nombre_tarea FROM tareas WHERE id_tarea = ?");
+                $stmt_tarea_info->execute([$id_tarea]);
+                $tarea_info = $stmt_tarea_info->fetch();
+                $nombre_tarea = $tarea_info ? $tarea_info['nombre_tarea'] : 'una tarea';
+                $stmt_asignados = $pdo->prepare("SELECT u.id_usuario, u.email, u.nombre_completo FROM usuarios u JOIN tareas_asignadas ta ON u.id_usuario = ta.id_usuario WHERE ta.id_tarea = ?");
+                $stmt_asignados->execute([$id_tarea]);
+                $miembros_asignados = $stmt_asignados->fetchAll();
+                $asunto = "Tarea Completada: " . $nombre_tarea;
+                $cuerpo = "<h1>Tarea Completada</h1><p>Hola, te informamos que la tarea '<strong>".e($nombre_tarea)."</strong>' ha sido marcada como completada por un administrador.</p><p>Puedes ver los detalles en la plataforma.</p>";
+                foreach ($miembros_asignados as $miembro) {
+                    enviar_email($miembro['email'], $miembro['nombre_completo'], $asunto, $cuerpo);
+                }
+                $pdo->commit();
+                $mensaje = "¡Tarea marcada como completada y notificaciones enviadas!";
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $error = "Error al completar la tarea: " . $e->getMessage();
+            }
+        } else {
+            $error = "No tienes permiso para esta acción.";
+        }
     }
     if (isset($_POST['reabrir_tarea'])) {
         if ($_SESSION['user_rol'] === 'admin') {
@@ -85,7 +148,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else { $error = "No tienes permiso para esta acción."; }
     }
 }
-if (isset($_GET['eliminar_recurso'])) { /* ... */ }
+if (isset($_GET['eliminar_recurso']) && in_array($_SESSION['user_rol'], ['admin', 'analista'])) {
+    $id_recurso_a_eliminar = filter_var($_GET['eliminar_recurso'], FILTER_VALIDATE_INT);
+    if ($id_recurso_a_eliminar) {
+        try {
+            $stmt_recurso = $pdo->prepare("SELECT * FROM recursos_tarea WHERE id_recurso = ? AND id_tarea = ?");
+            $stmt_recurso->execute([$id_recurso_a_eliminar, $id_tarea]);
+            $recurso_a_eliminar = $stmt_recurso->fetch();
+
+            if ($recurso_a_eliminar) {
+                $ruta_fisica = __DIR__ . '/../' . $recurso_a_eliminar['ruta_archivo'];
+                if (file_exists($ruta_fisica)) {
+                    unlink($ruta_fisica);
+                }
+                $stmt_delete = $pdo->prepare("DELETE FROM recursos_tarea WHERE id_recurso = ?");
+                $stmt_delete->execute([$id_recurso_a_eliminar]);
+                header("Location: editar_tarea.php?id=$id_tarea&msg=recurso_eliminado");
+                exit();
+            }
+        } catch (PDOException $e) {
+            $error = "Error al eliminar el recurso.";
+        }
+    }
+}
 if(isset($_GET['msg']) && $_GET['msg'] == 'recurso_eliminado') { $mensaje = "Recurso eliminado."; }
 $stmt = $pdo->prepare("SELECT * FROM tareas WHERE id_tarea = ?"); $stmt->execute([$id_tarea]); $tarea = $stmt->fetch();
 if (!$tarea) { header("Location: tareas.php"); exit(); }
@@ -123,15 +208,168 @@ include '../includes/header_admin.php';
                 <?php foreach ($usuarios_asignables as $usuario): ?><div><input type="checkbox" name="miembros_asignados[]" value="<?php echo $usuario['id_usuario']; ?>" id="usuario_<?php echo $usuario['id_usuario']; ?>" <?php if(in_array($usuario['id_usuario'], $ids_miembros_asignados)) echo 'checked'; ?>><label for="usuario_<?php echo $usuario['id_usuario']; ?>"><?php echo e($usuario['nombre_completo']); ?> (<?php echo e(ucfirst($usuario['rol'])); ?>)</label></div><?php endforeach; ?>
             </div></div>
             <hr><h4>Recursos</h4>
-            <div class="form-group"><label>Recursos Actuales:</label><div class="resource-list"><?php if (empty($recursos)): ?><p style="grid-column: 1 / -1; text-align:center; color: #777;">No hay recursos.</p><?php else: foreach ($recursos as $recurso): /* ... */ endforeach; endif; ?></div></div>
-            <div class="form-group"><label>Añadir Nuevos:</label><input type="file" name="recursos[]" multiple></div>
+            <div class="form-group"><label>Recursos Actuales:</label><div class="resource-list">
+                <?php if (empty($recursos)): ?>
+                    <p style="grid-column: 1 / -1; text-align:center; color: #777;">No hay recursos.</p>
+                <?php else: ?>
+                    <?php foreach ($recursos as $recurso): ?>
+                        <?php
+                        $ruta_archivo = e($recurso['ruta_archivo']);
+                        $nombre_archivo = e($recurso['nombre_archivo']);
+                        $extension = strtolower(pathinfo($ruta_archivo, PATHINFO_EXTENSION));
+                        $is_image = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                        ?>
+                        <div class="resource-item" id="recurso-<?php echo $recurso['id_recurso']; ?>">
+                            <a href="../<?php echo $ruta_archivo; ?>" target="_blank" class="resource-link" title="Ver <?php echo $nombre_archivo; ?>">
+                                <?php if ($is_image): ?>
+                                    <img src="../<?php echo $ruta_archivo; ?>" alt="<?php echo $nombre_archivo; ?>" class="preview-image">
+                                <?php else: ?>
+                                    <div class="file-icon"><i class="fas fa-file-alt"></i></div>
+                                <?php endif; ?>
+                                <span class="file-name"><?php echo $nombre_archivo; ?></span>
+                            </a>
+                            <?php if (in_array($_SESSION['user_rol'], ['admin', 'analista'])): ?>
+                                <a href="editar_tarea.php?id=<?php echo $id_tarea; ?>&eliminar_recurso=<?php echo $recurso['id_recurso']; ?>"
+                                   class="btn-delete-resource"
+                                   onclick="return confirm('¿Estás seguro de que quieres eliminar este recurso?');">
+                                    <i class="fas fa-trash-can"></i>
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div></div>
+            <div class="form-group">
+                <label>Añadir Nuevos:</label>
+                <div class="file-input-wrapper">
+                    <button type="button" class="btn-select-files"><i class="fas fa-paperclip"></i> Seleccionar Archivos</button>
+                    <input type="file" name="recursos[]" multiple style="display: none;" id="recursos-input">
+                </div>
+                <div id="file-list" class="file-list-preview"></div>
+            </div>
             <hr style="margin-top: 2rem;"><button type="submit" name="actualizar_tarea" class="btn btn-success"><i class="fas fa-save"></i> Guardar Cambios</button>
         </form>
     </div>
     <div class="card">
         <h3>Comentarios</h3>
-        <?php if (!empty($lista_comentarios)): ?><div class="chat-box"><?php foreach ($lista_comentarios as $comentario): /* ... */ endforeach; ?></div><?php else: ?><p style="text-align: center; color: #777;">No hay comentarios.</p><?php endif; ?>
-        <form action="editar_tarea.php?id=<?php echo $id_tarea; ?>" method="POST" style="margin-top:20px;"><div class="form-group"><label>Añadir comentario:</label><textarea name="comentario" required rows="4"></textarea></div><button type="submit" name="agregar_comentario" class="btn">Enviar</button></form>
+        <?php if (!empty($lista_comentarios)): ?>
+            <div class="chat-box">
+                <?php foreach ($lista_comentarios as $comentario): ?>
+                    <div class="comment <?php echo ($comentario['rol'] === 'admin' || $comentario['rol'] === 'analista') ? 'comment-admin' : 'comment-miembro'; ?>">
+                        <p><strong><?php echo e($comentario['nombre_completo']); ?>:</strong></p>
+                        <p><?php echo nl2br(e($comentario['comentario'])); ?></p>
+                        <div class="meta"><?php echo date('d/m/Y H:i', strtotime($comentario['fecha_comentario'])); ?></div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php else: ?>
+            <p style="text-align: center; color: #777;">No hay comentarios.</p>
+        <?php endif; ?>
+        <form action="editar_tarea.php?id=<?php echo $id_tarea; ?>" method="POST" style="margin-top:20px;">
+            <div class="form-group"><label>Añadir comentario:</label><textarea name="comentario" required rows="4"></textarea></div>
+            <button type="submit" name="agregar_comentario" class="btn">Enviar</button>
+        </form>
     </div>
 </div>
+
+<style>
+.file-input-wrapper {
+    margin-bottom: 10px;
+}
+.btn-select-files {
+    padding: 10px 15px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.file-list-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+.file-item .file-name {
+    margin-right: 10px;
+}
+.file-item .btn-remove-file {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1.1em;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('recursos-input');
+    const fileListContainer = document.getElementById('file-list');
+    const selectFilesButton = document.querySelector('.btn-select-files');
+    let selectedFiles = new DataTransfer();
+
+    selectFilesButton.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+        for (const file of fileInput.files) {
+            selectedFiles.items.add(file);
+        }
+        updateFileInput();
+        renderFileList();
+    });
+
+    function renderFileList() {
+        fileListContainer.innerHTML = '';
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            const file = selectedFiles.files[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            const fileName = document.createElement('span');
+            fileName.className = 'file-name';
+            fileName.textContent = file.name;
+            fileItem.appendChild(fileName);
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'btn-remove-file';
+            removeButton.innerHTML = '&times;';
+            removeButton.type = 'button';
+            removeButton.onclick = function() {
+                removeFile(i);
+            };
+            fileItem.appendChild(removeButton);
+            
+            fileListContainer.appendChild(fileItem);
+        }
+    }
+
+    function removeFile(index) {
+        const newFiles = new DataTransfer();
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            if (i !== index) {
+                newFiles.items.add(selectedFiles.files[i]);
+            }
+        }
+        selectedFiles = newFiles;
+        updateFileInput();
+        renderFileList();
+    }
+
+    function updateFileInput() {
+        fileInput.files = selectedFiles.files;
+    }
+});
+</script>
+
 <?php include '../includes/footer_admin.php'; ?>

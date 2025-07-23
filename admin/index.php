@@ -29,6 +29,10 @@ try {
         $stmt_admin_tasks = $pdo->prepare("SELECT t.*, c.nombre_completo as creador, GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') as miembros_asignados FROM tareas t JOIN usuarios c ON t.id_admin_creador = c.id_usuario LEFT JOIN tareas_asignadas ta ON t.id_tarea=ta.id_tarea LEFT JOIN usuarios u ON ta.id_usuario=u.id_usuario WHERE c.rol = 'admin' AND t.id_tarea IN (SELECT ta_sub.id_tarea FROM tareas_asignadas ta_sub WHERE ta_sub.id_usuario = ?) GROUP BY t.id_tarea ORDER BY t.fecha_vencimiento DESC LIMIT 10");
         $stmt_admin_tasks->execute([$id_usuario_actual]);
         $tareas_de_admin = $stmt_admin_tasks->fetchAll();
+
+        $stmt_completadas_analista = $pdo->prepare("SELECT t.*, GROUP_CONCAT(u.nombre_completo SEPARATOR ', ') as miembros_asignados FROM tareas t LEFT JOIN tareas_asignadas ta ON t.id_tarea=ta.id_tarea LEFT JOIN usuarios u ON ta.id_usuario=u.id_usuario WHERE t.estado = 'completada' AND t.id_admin_creador = ? GROUP BY t.id_tarea ORDER BY t.fecha_vencimiento DESC LIMIT 5");
+        $stmt_completadas_analista->execute([$id_usuario_actual]);
+        $tareas_completadas_analista = $stmt_completadas_analista->fetchAll();
     }
 } catch(PDOException $e) { die("Error al obtener datos del dashboard: " . $e->getMessage()); }
 
@@ -84,6 +88,27 @@ include '../includes/header_admin.php';
             </tbody></table></div>
         </div>
         <?php endif; ?>
+        <div class="card" style="margin-top: 2rem;">
+            <h3><i class="fas fa-history" style="color: var(--success-color);"></i> Últimas 5 Tareas Completadas</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Tarea</th><th>Miembro(s) Asignado(s)</th><th>Fecha de Vencimiento</th></tr></thead>
+                    <tbody>
+                    <?php if(empty($tareas_completadas_analista)): ?>
+                        <tr><td colspan="3">Aún no hay tareas completadas.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($tareas_completadas_analista as $tarea): ?>
+                            <tr>
+                                <td><a href="editar_tarea.php?id=<?php echo $tarea['id_tarea']; ?>"><?php echo e($tarea['nombre_tarea']); ?></a></td>
+                                <td><?php echo e($tarea['miembros_asignados']); ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($tarea['fecha_vencimiento'])); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     <?php endif; ?>
 </div>
 <?php include '../includes/footer_admin.php'; ?>

@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     } else {
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare("INSERT INTO tareas (nombre_tarea, descripcion, fecha_vencimiento, prioridad, id_admin_creador) VALUES (?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO tareas (nombre_tarea, descripcion, fecha_vencimiento, prioridad, id_admin_creador, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')");
             $stmt->execute([$nombre_tarea, $descripcion, $fecha_vencimiento, $prioridad, $_SESSION['user_id']]);
             $id_tarea = $pdo->lastInsertId();
             $stmt_asignar = $pdo->prepare("INSERT INTO tareas_asignadas (id_tarea, id_usuario) VALUES (?, ?)");
@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_admins = $pdo->query("SELECT email, nombre_completo FROM usuarios WHERE rol = 'admin'");
                 foreach ($stmt_admins->fetchAll() as $admin) {
                     $asunto_admin = "Nueva tarea creada por el analista " . $_SESSION['user_nombre'];
-                    $cuerpo_admin = "<h1>Tarea Creada por Analista</h1><p>Hola ".e($admin['nombre_completo']).",</p><p>El analista ".e($_SESSION['user_nombre'])." ha creado la siguiente tarea:</p><p><strong>".e($nombre_tarea)."</strong></p><p>Puedes revisarla en el panel de administraci贸n.</p>";
+                    $cuerpo_admin = "<h1>Tarea Creada por Analista</h1><p>Hola ".e($admin['nombre_completo']).",</p><p>El analista ".e($_SESSION['user_nombre'])." ha creado la siguiente tarea:</p><p><strong>".e($nombre_tarea)."</strong></p><p>Puedes revisarla en el panel de administración.</p>";
                     enviar_email($admin['email'], $admin['nombre_completo'], $asunto_admin, $cuerpo_admin);
                 }
             }
@@ -71,10 +71,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// --- INICIO DE LA MODIFICACI脫N: CONSULTA PARA OBTENER MIEMBROS Y ANALISTAS ---
+// --- INICIO DE LA MODIFICACIÓN: CONSULTA PARA OBTENER MIEMBROS Y ANALISTAS ---
 $stmt_usuarios_asignables = $pdo->query("SELECT id_usuario, nombre_completo, rol FROM usuarios WHERE rol IN ('miembro', 'analista') ORDER BY nombre_completo ASC");
 $usuarios_asignables = $stmt_usuarios_asignables->fetchAll();
-// --- FIN DE LA MODIFICACI脫N ---
+// --- FIN DE LA MODIFICACIÓN ---
 
 include '../includes/header_admin.php';
 ?>
@@ -87,7 +87,7 @@ include '../includes/header_admin.php';
             <input type="text" id="nombre_tarea" name="nombre_tarea" required>
         </div>
         <div class="form-group">
-            <label for="descripcion">Descripci贸n</label>
+            <label for="descripcion">Descripción</label>
             <textarea id="descripcion" name="descripcion" rows="4"></textarea>
         </div>
         <div class="form-group">
@@ -115,9 +115,114 @@ include '../includes/header_admin.php';
         </div>
         <div class="form-group">
             <label for="recursos">Recursos Multimedia (opcional)</label>
-            <input type="file" id="recursos" name="recursos[]" multiple>
+            <div class="file-input-wrapper">
+                <button type="button" class="btn-select-files"><i class="fas fa-paperclip"></i> Seleccionar Archivos</button>
+                <input type="file" id="recursos" name="recursos[]" multiple style="display: none;">
+            </div>
+            <div id="file-list" class="file-list-preview"></div>
         </div>
         <button type="submit" class="btn btn-success"><i class="fas fa-plus-circle"></i> Crear Tarea</button>
     </form>
 </div>
+
+<style>
+.file-input-wrapper {
+    margin-bottom: 10px;
+}
+.btn-select-files {
+    padding: 10px 15px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.file-list-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+.file-item .file-name {
+    margin-right: 10px;
+}
+.file-item .btn-remove-file {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    font-size: 1.1em;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('recursos');
+    const fileListContainer = document.getElementById('file-list');
+    const selectFilesButton = document.querySelector('.btn-select-files');
+    let selectedFiles = new DataTransfer();
+
+    selectFilesButton.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', function() {
+        for (const file of fileInput.files) {
+            selectedFiles.items.add(file);
+        }
+        updateFileInput();
+        renderFileList();
+    });
+
+    function renderFileList() {
+        fileListContainer.innerHTML = '';
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            const file = selectedFiles.files[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            const fileName = document.createElement('span');
+            fileName.className = 'file-name';
+            fileName.textContent = file.name;
+            fileItem.appendChild(fileName);
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'btn-remove-file';
+            removeButton.innerHTML = '&times;';
+            removeButton.type = 'button';
+            removeButton.onclick = function() {
+                removeFile(i);
+            };
+            fileItem.appendChild(removeButton);
+            
+            fileListContainer.appendChild(fileItem);
+        }
+    }
+
+    function removeFile(index) {
+        const newFiles = new DataTransfer();
+        for (let i = 0; i < selectedFiles.files.length; i++) {
+            if (i !== index) {
+                newFiles.items.add(selectedFiles.files[i]);
+            }
+        }
+        selectedFiles = newFiles;
+        updateFileInput();
+        renderFileList();
+    }
+
+    function updateFileInput() {
+        fileInput.files = selectedFiles.files;
+    }
+});
+</script>
+
 <?php include '../includes/footer_admin.php'; ?>

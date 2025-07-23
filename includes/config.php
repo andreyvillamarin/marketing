@@ -11,14 +11,6 @@ define('DB_NAME', 'qdosnetw_marketing');
 // URL base del proyecto
 define('BASE_URL', 'https://qdos.network/demos/marketing');
 
-// ===================================================================
-// INICIO DE LA SECCIÓN DEL ERROR
-// Asegúrate de que esta sección quede exactamente así
-// ===================================================================
-
-// ===================================================================
-// FIN DE LA SECCIÓN DEL ERROR
-// ===================================================================
 
 
 // Configuración de Sesiones

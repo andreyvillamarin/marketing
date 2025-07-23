@@ -24,11 +24,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['agregar_comentario'])) {
         $comentario = trim($_POST['comentario']);
         if (!empty($comentario)) {
-            try { $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)"); $stmt_insert->execute([$id_tarea, $id_miembro, $comentario]); $mensaje = "Comentario enviado."; /* ... notificaciones ... */ } catch (PDOException $e) { $error = "No se pudo enviar el comentario."; }
+            $pdo->beginTransaction();
+            try {
+                $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)");
+                $stmt_insert->execute([$id_tarea, $id_miembro, $comentario]);
+
+                $stmt_usuarios = $pdo->prepare("
+                    SELECT u.email, u.nombre_completo, u.id_usuario FROM usuarios u
+                    JOIN tareas_asignadas ta ON u.id_usuario = ta.id_usuario
+                    WHERE ta.id_tarea = ?
+                    UNION
+                    SELECT u.email, u.nombre_completo, u.id_usuario FROM usuarios u
+                    JOIN tareas t ON u.id_usuario = t.id_admin_creador
+                    WHERE t.id_tarea = ?
+                ");
+                $stmt_usuarios->execute([$id_tarea, $id_tarea]);
+                $usuarios_a_notificar = $stmt_usuarios->fetchAll(PDO::FETCH_UNIQUE);
+
+                $nombre_tarea = $tarea_info['nombre_tarea'];
+                $nombre_comentador = $_SESSION['user_nombre'];
+                $asunto = "Nuevo comentario en la tarea: " . $nombre_tarea;
+                $cuerpo = "<h1>Nuevo Comentario</h1>
+                           <p>Hola,</p>
+                           <p>El usuario <strong>".e($nombre_comentador)."</strong> ha añadido un nuevo comentario a la tarea '<strong>".e($nombre_tarea)."</strong>'.</p>
+                           <p><strong>Comentario:</strong></p>
+                           <blockquote style='border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px;'><p>".nl2br(e($comentario))."</p></blockquote>
+                           <p>Puedes ver la tarea y responder haciendo clic en el siguiente enlace:</p>
+                           <p><a href='http://localhost/gestion-proyectos/miembro/tarea.php?id=".urlencode($id_tarea)."'>Ver Tarea</a></p>";
+
+                foreach ($usuarios_a_notificar as $id_usuario => $usuario) {
+                    if ($id_usuario != $id_miembro) { 
+                        enviar_email($usuario['email'], $usuario['nombre_completo'], $asunto, $cuerpo);
+                    }
+                }
+
+                $pdo->commit();
+                $mensaje = "Comentario enviado y notificado.";
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $error = "No se pudo enviar el comentario: " . $e->getMessage();
+            }
         }
     }
     if (isset($_POST['notificar_finalizacion'])) {
-        try { $stmt_update = $pdo->prepare("UPDATE tareas SET estado = 'finalizada_usuario' WHERE id_tarea = ?"); $stmt_update->execute([$id_tarea]); $mensaje = "¡Excelente! Se ha notificado al creador de la tarea."; /* ... notificaciones ... */ } catch(PDOException $e) { $error = "No se pudo notificar la finalización."; }
+        $pdo->beginTransaction();
+        try {
+            $stmt_update = $pdo->prepare("UPDATE tareas SET estado = 'finalizada_usuario' WHERE id_tarea = ?");
+            $stmt_update->execute([$id_tarea]);
+
+            $creador_email = $tarea_info['creador_email'];
+            $creador_nombre = $tarea_info['creador_nombre'];
+            $nombre_tarea = $tarea_info['nombre_tarea'];
+            $miembro_nombre = $_SESSION['user_nombre'];
+
+            $asunto = "Tarea marcada como finalizada: " . $nombre_tarea;
+            $cuerpo = "<h1>Tarea Finalizada por Miembro</h1>
+                       <p>Hola ".e($creador_nombre).",</p>
+                       <p>El miembro <strong>".e($miembro_nombre)."</strong> ha marcado la tarea '<strong>".e($nombre_tarea)."</strong>' como finalizada.</p>
+                       <p>Por favor, revisa la tarea en el panel de administración para confirmarla y marcarla como completada.</p>
+                       <p><a href='http://localhost/gestion-proyectos/admin/editar_tarea.php?id=".urlencode($id_tarea)."'>Revisar Tarea</a></p>";
+            
+            enviar_email($creador_email, $creador_nombre, $asunto, $cuerpo);
+
+            $pdo->commit();
+            $mensaje = "¡Excelente! Se ha notificado al creador de la tarea.";
+            $tarea_info['estado'] = 'finalizada_usuario';
+        } catch(Exception $e) {
+            $pdo->rollBack();
+            $error = "No se pudo notificar la finalización: " . $e->getMessage();
+        }
     }
     if (isset($_POST['configurar_recordatorio'])) {
         $dias_antes = $_POST['dias_notificacion'] ?? null;
