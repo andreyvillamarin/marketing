@@ -50,3 +50,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// ====== LÓGICA PARA FILTRO DE ANALÍTICAS ======
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoInformeSelector = document.getElementById('tipo_informe');
+    const miembroSelectorGroup = document.getElementById('miembro_selector_group');
+
+    if (tipoInformeSelector && miembroSelectorGroup) {
+        const toggleMiembroSelector = () => {
+            if (tipoInformeSelector.value === 'equipo') {
+                miembroSelectorGroup.style.display = 'none';
+                miembroSelectorGroup.querySelector('select').removeAttribute('required');
+            } else {
+                miembroSelectorGroup.style.display = 'block';
+                miembroSelectorGroup.querySelector('select').setAttribute('required', 'required');
+            }
+        };
+
+        // Ejecutar al cargar la página
+        toggleMiembroSelector();
+
+        // Ejecutar al cambiar la selección
+        tipoInformeSelector.addEventListener('change', toggleMiembroSelector);
+    }
+});

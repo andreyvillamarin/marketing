@@ -9,7 +9,9 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_rol'] !== 'miembro') {
 }
 
 $id_miembro = $_SESSION['user_id'];
-$view_mode = $_GET['view'] ?? 'calendar'; 
+// --- INICIO DE LA MODIFICACIÓN: CAMBIO DE VISTA PREDETERMINADA ---
+$view_mode = $_GET['view'] ?? 'list'; // Antes decía 'calendar', ahora 'list'
+// --- FIN DE LA MODIFICACIÓN ---
 
 try {
     $stmt = $pdo->prepare("SELECT t.* FROM tareas t JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea WHERE ta.id_usuario = ? AND t.estado != 'cerrada' ORDER BY t.fecha_vencimiento ASC");
@@ -84,43 +86,19 @@ if (document.getElementById('calendario')) {
     document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('calendario');
 
-        // Opciones por defecto para escritorio
         let calendarOptions = {
-            locale: 'es', // Forzar idioma español para días y meses
-            
-            // --- INICIO DE LA MODIFICACIÓN: TRADUCCIÓN DE BOTONES ---
-            buttonText: {
-                today:    'Hoy',
-                month:    'Mes',
-                week:     'Semana',
-                list:     'Lista'
-            },
-            // --- FIN DE LA MODIFICACIÓN ---
-
+            locale: 'es', 
+            buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', list: 'Lista' },
             initialView: 'dayGridMonth',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: 'dayGridMonth,timeGridWeek,listWeek'
-            },
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
             events: <?php echo $eventos_json; ?>,
-            eventDidMount: function(info) {
-                if (info.event.extendedProps.status === 'finalizada_usuario') {
-                    info.el.style.opacity = '0.7';
-                    info.el.style.borderStyle = 'dashed';
-                }
-            }
+            eventDidMount: function(info) { if (info.event.extendedProps.status === 'finalizada_usuario') { info.el.style.opacity = '0.7'; info.el.style.borderStyle = 'dashed'; }}
         };
 
-        // Si la pantalla es pequeña (móvil), sobreescribimos las opciones
         if (window.innerWidth < 768) {
             calendarOptions.initialView = 'listWeek';
-            calendarOptions.headerToolbar = {
-                left: 'prev,next',
-                center: 'title',
-                right: 'today'
-            };
-            calendarOptions.titleFormat = { year: 'numeric', month: 'short', day: 'numeric' };
+            calendarOptions.headerToolbar = { left: 'prev,next', center: 'title', right: 'today' };
+            calendarOptions.titleFormat = { year: 'numeric', month: 'short', day: 'numeric' }; 
         }
 
         var calendar = new FullCalendar.Calendar(calendarEl, calendarOptions);

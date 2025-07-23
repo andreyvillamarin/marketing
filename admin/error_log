@@ -1,0 +1,18 @@
+[22-Jul-2025 18:46:53 America/Bogota] Error al enviar email a admin: Invalid address:  (to): admin
+[22-Jul-2025 18:49:20 America/Bogota] PHP Parse error:  syntax error, unexpected token ":" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 98
+[23-Jul-2025 09:49:15 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:49:15 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:49:26 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:49:26 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:53:57 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:53:57 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:54:09 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 09:54:09 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:00:06 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:00:06 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:00:17 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:00:17 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:01:43 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:01:43 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:01:55 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81
+[23-Jul-2025 10:01:55 America/Bogota] PHP Warning:  Undefined array key "rol" in /home/qdosnetw/public_html/demos/marketing/admin/analiticas.php on line 81

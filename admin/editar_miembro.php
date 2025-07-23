@@ -17,53 +17,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $id_area = $_POST['id_area'];
     $password = $_POST['password'];
+    // --- INICIO DE LA MODIFICACIÓN: OBTENER EL NUEVO ROL ---
+    $rol = $_POST['rol'];
+    // --- FIN DE LA MODIFICACIÓN ---
 
-    if (empty($nombre_completo) || empty($email) || empty($id_area)) {
-        $error = "Nombre, email y área son campos obligatorios.";
+    if (empty($nombre_completo) || empty($email) || empty($id_area) || !in_array($rol, ['miembro', 'analista'])) {
+        $error = "Nombre, email, área y un rol válido son campos obligatorios.";
     } else {
         try {
-            // Construir la consulta base
-            $sql = "UPDATE usuarios SET nombre_completo = ?, email = ?, id_area = ?";
-            $params = [$nombre_completo, $email, $id_area];
+            // --- INICIO DE LA MODIFICACIÓN: ACTUALIZAR LA CONSULTA SQL ---
+            $sql = "UPDATE usuarios SET nombre_completo = ?, email = ?, id_area = ?, rol = ?";
+            $params = [$nombre_completo, $email, $id_area, $rol];
+            // --- FIN DE LA MODIFICACIÓN ---
 
-            // Si el campo de contraseña no está vacío, añadirlo a la consulta
             if (!empty($password)) {
-                $sql .= ", password = ?";
-                $params[] = password_hash($password, PASSWORD_DEFAULT);
+                if (strlen($password) < 6) {
+                    $error = "La nueva contraseña debe tener al menos 6 caracteres.";
+                } else {
+                    $sql .= ", password = ?";
+                    $params[] = password_hash($password, PASSWORD_DEFAULT);
+                }
             }
 
-            // Finalizar la consulta y añadir el ID del miembro
-            $sql .= " WHERE id_usuario = ?";
-            $params[] = $id_miembro;
-
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
-            $mensaje = "¡Miembro actualizado exitosamente!";
+            if (empty($error)) {
+                $sql .= " WHERE id_usuario = ?";
+                $params[] = $id_miembro;
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                $mensaje = "¡Usuario actualizado exitosamente!";
+            }
 
         } catch (PDOException $e) {
-            $error = "Error al actualizar el miembro. El email ya podría estar en uso por otro usuario.";
+            $error = "Error al actualizar el usuario. El email ya podría estar en uso por otro usuario.";
         }
     }
 }
 
 // Obtener los datos actuales del miembro para pre-rellenar el formulario
-$stmt_miembro = $pdo->prepare("SELECT * FROM usuarios WHERE id_usuario = ? AND rol = 'miembro'");
+$stmt_miembro = $pdo->prepare("SELECT * FROM usuarios WHERE id_usuario = ? AND rol != 'admin'");
 $stmt_miembro->execute([$id_miembro]);
 $miembro = $stmt_miembro->fetch();
 
-// Si el miembro no existe, redirigir
 if (!$miembro) { header("Location: miembros.php"); exit(); }
 
 $page_title = 'Editando a: ' . e($miembro['nombre_completo']);
-
-// Obtener todas las áreas para el menú desplegable
 $areas = $pdo->query("SELECT * FROM areas ORDER BY nombre_area")->fetchAll();
 
 include '../includes/header_admin.php';
 ?>
 
-<h2><i class="fas fa-user-edit"></i> Editar Miembro</h2>
-<p>Modifica los datos del miembro del equipo. <a href="miembros.php" class="btn btn-secondary btn-sm">Volver a la lista</a></p>
+<p style="margin-top:0;"><a href="miembros.php" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Volver a la lista</a></p>
 
 <div class="card form-card">
     <h3>Datos de <?php echo e($miembro['nombre_completo']); ?></h3>
@@ -91,13 +94,21 @@ include '../includes/header_admin.php';
                 <?php endforeach; ?>
             </select>
         </div>
+
+        <div class="form-group">
+            <label for="rol">Rol del Usuario</label>
+            <select name="rol" id="rol" required>
+                <option value="miembro" <?php if ($miembro['rol'] == 'miembro') echo 'selected'; ?>>Miembro de Equipo</option>
+                <option value="analista" <?php if ($miembro['rol'] == 'analista') echo 'selected'; ?>>Analista</option>
+            </select>
+        </div>
         <hr>
         <div class="form-group">
-            <label for="password">Nueva Contraseña</label>
+            <label for="password">Restablecer Contraseña</label>
             <input type="text" name="password" placeholder="Dejar en blanco para no cambiar">
-            <small>Si dejas este campo vacío, la contraseña actual del usuario no se modificará.</small>
+            <small style="display:block; margin-top:5px; color:#6c757d;">Si dejas este campo vacío, la contraseña actual del usuario no se modificará.</small>
         </div>
-        <button type="submit" class="btn btn-success">Guardar Cambios</button>
+        <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Guardar Cambios</button>
     </form>
 </div>
 

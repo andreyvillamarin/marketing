@@ -3,9 +3,9 @@ require_once '../includes/config.php';
 require_once '../includes/db.php';
 require_once '../includes/funciones.php';
 
-if (isset($_SESSION['user_id']) && isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'admin') {
+if (isset($_SESSION['user_id']) && isset($_SESSION['user_rol']) && in_array($_SESSION['user_rol'], ['admin', 'analista'])) {
     header("Location: " . BASE_URL . "/admin/index.php");
-    exit(); // Aseguramos que el script se detenga aquí
+    exit();
 }
 
 $error = '';
@@ -16,7 +16,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $email = trim($_POST['email']);
         $password = trim($_POST['password']);
         try {
-            $stmt = $pdo->prepare("SELECT id_usuario, nombre_completo, password, rol FROM usuarios WHERE email = ? AND rol = 'admin'");
+            $stmt = $pdo->prepare("SELECT id_usuario, nombre_completo, password, rol FROM usuarios WHERE email = ? AND (rol = 'admin' OR rol = 'analista')");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
             if ($user && password_verify($password, $user['password'])) {
@@ -25,9 +25,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $_SESSION['user_rol'] = $user['rol'];
                 $_SESSION['user_nombre'] = $user['nombre_completo'];
                 header("Location: " . BASE_URL . "/admin/index.php");
-                exit(); // Aseguramos que el script se detenga aquí
+                exit();
             } else {
-                $error = "Email o contraseña incorrectos.";
+                $error = "Email o contraseña incorrectos, o no tienes permiso para acceder.";
             }
         } catch (PDOException $e) {
             $error = "Error del sistema. Por favor, intente más tarde.";
@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Acceso de Administrador</title>
+    <title>Acceso al Panel</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/assets/img/favicon.png">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/style.css">
@@ -48,7 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
     <div class="login-container">
         <img src="<?php echo BASE_URL; ?>/assets/img/logo.png" alt="Logo de la Empresa" class="login-logo">
-        <h2>Acceso de Administrador</h2>
+        <h2>Acceso al Panel</h2>
         <?php if (!empty($error)): ?><div class="alert alert-danger"><?php echo e($error); ?></div><?php endif; ?>
         <form action="<?php echo BASE_URL; ?>/admin/login.php" method="post" novalidate>
             <div class="form-group">
