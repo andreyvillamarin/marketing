@@ -65,11 +65,7 @@ include '../includes/header_miembro.php';
                                     ?>
                                 </td>
                                 <td>
-                                    <?php
-                                    $estado_clase = e($tarea['estado']); $estado_texto = ucfirst(str_replace('_', ' ', $estado_clase)); $estado_icono = 'fa-clock';
-                                    if ($estado_clase == 'finalizada_usuario') $estado_icono = 'fa-check';
-                                    echo "<span class='icon-text icon-estado-{$estado_clase}'><i class='fas {$estado_icono}'></i> {$estado_texto}</span>";
-                                    ?>
+                                    <?php echo mostrar_estado_tarea($tarea); ?>
                                 </td>
                                 <td><a href="tarea.php?id=<?php echo $tarea['id_tarea']; ?>" class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> Ver</a></td>
                             </tr>

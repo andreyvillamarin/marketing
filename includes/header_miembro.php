@@ -14,6 +14,7 @@
         <button id="close-btn">&times;</button>
         <div class="sidebar-header"><h3>Mis Tareas</h3></div>
         <a href="<?php echo BASE_URL; ?>/miembro/index.php">Ver Tareas</a>
+        <a href="<?php echo BASE_URL; ?>/miembro/tareas_completadas.php">Tareas Completadas</a>
         <a href="<?php echo BASE_URL; ?>/logout.php" class="logout-btn">Cerrar Sesión</a>
     </nav>
     <div class="main-content">

@@ -53,11 +53,7 @@ include '../includes/header_admin.php';
                             <td><?php echo e($tarea['creador']); ?></td>
                             <td><?php echo date('d/m/Y H:i', strtotime($tarea['fecha_vencimiento'])); ?></td>
                             <td>
-                                <?php
-                                $estado_clase = e($tarea['estado']); $estado_texto = ucfirst(str_replace('_', ' ', $estado_clase)); $estado_icono = 'fa-clock';
-                                if ($estado_clase == 'finalizada_usuario') $estado_icono = 'fa-check'; if ($estado_clase == 'cerrada') $estado_icono = 'fa-check-double';
-                                echo "<span class='icon-text icon-estado-{$estado_clase}'><i class='fas {$estado_icono}'></i> {$estado_texto}</span>";
-                                ?>
+                                <?php echo mostrar_estado_tarea($tarea); ?>
                             </td>
                             <td>
                                 <?php

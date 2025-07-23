@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt_admins = $pdo->query("SELECT email, nombre_completo FROM usuarios WHERE rol = 'admin'");
                 foreach ($stmt_admins->fetchAll() as $admin) {
                     $asunto_admin = "Nueva tarea creada por el analista " . $_SESSION['user_nombre'];
-                    $cuerpo_admin = "<h1>Tarea Creada por Analista</h1><p>Hola ".e($admin['nombre_completo']).",</p><p>El analista ".e($_SESSION['user_nombre'])." ha creado la siguiente tarea:</p><p><strong>".e($nombre_tarea)."</strong></p><p>Puedes revisarla en el panel de administración.</p>";
+                    $cuerpo_admin = "<h1>Tarea Creada por Analista</h1><p>Hola ".e($admin['nombre_completo']).",</p><p>El analista ".e($_SESSION['user_nombre'])." ha creado la siguiente tarea:</p><p><strong>".e($nombre_tarea)."</strong></p><p>Puedes revisarla en el panel de administraci贸n.</p>";
                     enviar_email($admin['email'], $admin['nombre_completo'], $asunto_admin, $cuerpo_admin);
                 }
             }
@@ -71,10 +71,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-// --- INICIO DE LA MODIFICACIÓN: CONSULTA PARA OBTENER MIEMBROS Y ANALISTAS ---
+// --- INICIO DE LA MODIFICACI脫N: CONSULTA PARA OBTENER MIEMBROS Y ANALISTAS ---
 $stmt_usuarios_asignables = $pdo->query("SELECT id_usuario, nombre_completo, rol FROM usuarios WHERE rol IN ('miembro', 'analista') ORDER BY nombre_completo ASC");
 $usuarios_asignables = $stmt_usuarios_asignables->fetchAll();
-// --- FIN DE LA MODIFICACIÓN ---
+// --- FIN DE LA MODIFICACI脫N ---
 
 include '../includes/header_admin.php';
 ?>
@@ -87,7 +87,7 @@ include '../includes/header_admin.php';
             <input type="text" id="nombre_tarea" name="nombre_tarea" required>
         </div>
         <div class="form-group">
-            <label for="descripcion">Descripción</label>
+            <label for="descripcion">Descripci贸n</label>
             <textarea id="descripcion" name="descripcion" rows="4"></textarea>
         </div>
         <div class="form-group">

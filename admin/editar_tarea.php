@@ -190,7 +190,7 @@ include '../includes/header_admin.php';
         <?php if (isset($_SESSION['user_rol']) && $_SESSION['user_rol'] === 'admin'): ?>
         <div style="padding: 15px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; background-color: #f9f9f9;">
             <h4 style="margin-top:0;">Acciones de Estado</h4>
-            <p><strong>Estado Actual:</strong> <span class="estado-<?php echo e($tarea['estado']); ?>"><?php echo e(ucfirst(str_replace('_', ' ', $tarea['estado']))); ?></span></p>
+            <p><strong>Estado Actual:</strong> <?php echo mostrar_estado_tarea($tarea); ?></p>
             <?php if ($tarea['estado'] === 'pendiente' || $tarea['estado'] === 'finalizada_usuario'): ?>
                 <form action="editar_tarea.php?id=<?php echo $id_tarea; ?>" method="POST" onsubmit="return confirm('¿Seguro?');" style="margin:0;"><button type="submit" name="cerrar_tarea" class="btn btn-success"><i class="fas fa-check-double"></i> Confirmar y Completar</button></form>
             <?php elseif ($tarea['estado'] === 'completada'): ?>

@@ -124,7 +124,7 @@ include '../includes/header_miembro.php';
             <p><strong>Descripción:</strong> <?php echo nl2br(e($tarea_info['descripcion'])); ?></p>
             <p><strong>Fecha de Vencimiento:</strong> <?php echo date('d/m/Y H:i', strtotime($tarea_info['fecha_vencimiento'])); ?></p>
             <p><strong>Prioridad:</strong> <span class="icon-text icon-prioridad-<?php echo e($tarea_info['prioridad']); ?>"><?php echo e(ucfirst($tarea_info['prioridad'])); ?></span></p>
-            <p><strong>Estado Actual:</strong> <span class="icon-text icon-estado-<?php echo e($tarea_info['estado']); ?>"><?php echo e(ucfirst(str_replace('_', ' ', $tarea_info['estado']))); ?></span></p>
+            <p><strong>Estado Actual:</strong> <?php echo mostrar_estado_tarea($tarea_info); ?></p>
             
             <h4>Recursos Adjuntos:</h4>
             <div class="resource-list">

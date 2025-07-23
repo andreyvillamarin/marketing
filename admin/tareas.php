@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_seleccionado
     if ($rol_usuario_actual === 'admin') {
         $ids_tareas = isset($_POST['ids_tareas']) ? $_POST['ids_tareas'] : [];
         if (!empty($ids_tareas)) { try { $placeholders = implode(',', array_fill(0, count($ids_tareas), '?')); $stmt = $pdo->prepare("DELETE FROM tareas WHERE id_tarea IN ($placeholders)"); $stmt->execute($ids_tareas); $mensaje = "Tareas seleccionadas eliminadas."; } catch (PDOException $e) { $error = "Error al eliminar las tareas."; }
-        } else { $error = "No se seleccion¨® ninguna tarea."; }
+        } else { $error = "No se seleccion���0�3 ninguna tarea."; }
     }
 }
 $sql = "SELECT t.*, u.nombre_completo as creador FROM tareas t JOIN usuarios u ON t.id_admin_creador = u.id_usuario";
@@ -44,7 +44,7 @@ include '../includes/header_admin.php';
 </div>
 <form action="tareas.php" method="POST">
     <?php if ($rol_usuario_actual === 'admin'): ?>
-    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('0†7Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
+    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('�0�10�6�97Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
     <?php endif; ?>
     <div class="table-wrapper">
         <table>
@@ -60,14 +60,7 @@ include '../includes/header_admin.php';
                             <td><?php echo e($tarea['creador']); ?></td>
                             <td><?php echo date('d/m/Y H:i', strtotime($tarea['fecha_vencimiento'])); ?></td>
                             <td>
-                                <?php
-                                $estado_clase = e($tarea['estado']);
-                                $estado_texto = ucfirst(str_replace('_', ' ', $estado_clase));
-                                $estado_icono = 'fa-clock';
-                                if ($estado_clase == 'finalizada_usuario') $estado_icono = 'fa-check';
-                                if ($estado_clase == 'completada') $estado_icono = 'fa-check-double';
-                                echo "<span class='icon-text icon-estado-{$estado_clase}'><i class='fas {$estado_icono}'></i> {$estado_texto}</span>";
-                                ?>
+                                <?php echo mostrar_estado_tarea($tarea); ?>
                             </td>
                             <td>
                                 <?php
