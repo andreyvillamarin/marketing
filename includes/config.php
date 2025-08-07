@@ -11,6 +11,21 @@ define('DB_NAME', 'qdosnetw_marketing');
 // URL base del proyecto
 define('BASE_URL', 'https://qdos.network/demos/marketing');
 
+// ===================================================================
+// INICIO DE LA SECCIÓN DEL ERROR
+// Asegúrate de que esta sección quede exactamente así
+// ===================================================================
+// Configuración de Email (Brevo SMTP)
+define('SMTP_HOST', '');
+define('SMTP_USER', '');      // Línea 18
+define('SMTP_PASS', '');
+define('SMTP_PORT', 587);
+define('SMTP_SECURE', '');
+define('EMAIL_FROM', '');
+define('EMAIL_FROM_NAME', 'Gestor de Tareas Comfamiliar');
+// ===================================================================
+// FIN DE LA SECCIÓN DEL ERROR
+// ===================================================================
 
 
 // Configuración de Sesiones

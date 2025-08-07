@@ -65,6 +65,56 @@ if ($fecha_inicio && $fecha_fin) {
             // --- FIN DE LA MODIFICACIÓN ---
             
             if(!empty($data_bar) || !empty($data_pie)) $datos_encontrados = true;
+        
+        } elseif ($tipo_informe === 'informe_tareas') {
+            $query_tareas = "
+                SELECT
+                    t.nombre_tarea,
+                    uc.nombre_completo AS creador,
+                    t.fecha_creacion,
+                    t.fecha_vencimiento,
+                    (SELECT MAX(fecha_comentario) FROM comentarios_tarea WHERE id_tarea = t.id_tarea AND comentario LIKE 'He Finalizado esta Tarea') AS fecha_finalizada_usuario,
+                    (CASE
+                        WHEN t.estado = 'completada' AND (SELECT MAX(fecha_comentario) FROM comentarios_tarea WHERE id_tarea = t.id_tarea AND comentario LIKE 'He Finalizado esta Tarea') <= t.fecha_vencimiento THEN 'A tiempo'
+                        WHEN t.estado = 'completada' AND (SELECT MAX(fecha_comentario) FROM comentarios_tarea WHERE id_tarea = t.id_tarea AND comentario LIKE 'He Finalizado esta Tarea') > t.fecha_vencimiento THEN 'Con retraso'
+                        ELSE 'Pendiente'
+                    END) AS cumplimiento
+                FROM tareas t
+                JOIN usuarios uc ON t.id_admin_creador = uc.id_usuario
+                LEFT JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea
+            ";
+            
+            $params_tareas = [$fecha_inicio, $fecha_fin_sql];
+            $where_tareas = " WHERE t.fecha_creacion BETWEEN ? AND ?";
+
+            if ($id_miembro_filtro) {
+                $where_tareas .= " AND ta.id_usuario = ?";
+                $params_tareas[] = $id_miembro_filtro;
+            }
+
+            $query_tareas .= $where_tareas . " ORDER BY t.fecha_creacion DESC";
+            $stmt_tareas = $pdo->prepare($query_tareas);
+            $stmt_tareas->execute($params_tareas);
+            $listados['informe_tareas'] = $stmt_tareas->fetchAll();
+
+            if (!empty($listados['informe_tareas'])) {
+                $datos_encontrados = true;
+                $summary = [
+                    'completadas' => 0,
+                    'pendientes' => 0,
+                    'vencidas' => 0,
+                ];
+                foreach ($listados['informe_tareas'] as $tarea) {
+                    if ($tarea['cumplimiento'] === 'A tiempo' || $tarea['cumplimiento'] === 'Con retraso') {
+                        $summary['completadas']++;
+                    } else {
+                        $summary['pendientes']++;
+                        if (strtotime($tarea['fecha_vencimiento']) < time()) {
+                            $summary['vencidas']++;
+                        }
+                    }
+                }
+            }
         }
     } catch(PDOException $e) { $error = "Error al generar las analíticas: " . $e->getMessage(); }
 }
@@ -77,8 +127,25 @@ include '../includes/header_admin.php';
     <form action="analiticas.php" method="GET">
         <h3><i class="fas fa-filter"></i> Filtrar Datos</h3>
         <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            <div class="form-group" style="flex: 1 1 200px;"><label for="tipo_informe">Tipo de Informe:</label><select name="tipo_informe" id="tipo_informe"><option value="individual" <?php if($tipo_informe == 'individual') echo 'selected'; ?>>Rendimiento Individual</option><option value="equipo" <?php if($tipo_informe == 'equipo') echo 'selected'; ?>>Comparativa de Equipo</option></select></div>
-            <div class="form-group" style="flex: 1 1 200px;" id="miembro_selector_group"><label for="id_miembro">Seleccionar Usuario:</label><select name="id_miembro" id="id_miembro"><option value="">-- Todos --</option><?php foreach($miembros as $miembro): ?><option value="<?php echo $miembro['id_usuario']; ?>" <?php echo ($id_miembro_filtro == $miembro['id_usuario']) ? 'selected' : ''; ?>><?php echo e($miembro['nombre_completo']); ?> (<?php echo e(ucfirst($miembro['rol'])); ?>)</option><?php endforeach; ?></select></div>
+            <div class="form-group" style="flex: 1 1 200px;">
+                <label for="tipo_informe">Tipo de Informe:</label>
+                <select name="tipo_informe" id="tipo_informe">
+                    <option value="individual" <?php if($tipo_informe == 'individual') echo 'selected'; ?>>Rendimiento Individual</option>
+                    <option value="equipo" <?php if($tipo_informe == 'equipo') echo 'selected'; ?>>Comparativa de Equipo</option>
+                    <option value="informe_tareas" <?php if ($tipo_informe == 'informe_tareas') echo 'selected'; ?>>Informe de Tareas</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex: 1 1 200px;" id="miembro_selector_group">
+                <label for="id_miembro">Seleccionar Usuario:</label>
+                <select name="id_miembro" id="id_miembro">
+                    <option value="">-- Todos --</option>
+                    <?php foreach ($miembros as $miembro): ?>
+                        <option value="<?php echo $miembro['id_usuario']; ?>" <?php echo ($id_miembro_filtro == $miembro['id_usuario']) ? 'selected' : ''; ?>>
+                            <?php echo e($miembro['nombre_completo']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="form-group" style="flex: 1 1 150px;"><label for="fecha_inicio">Desde:</label><input type="date" name="fecha_inicio" id="fecha_inicio" value="<?php echo e($fecha_inicio); ?>" required></div>
             <div class="form-group" style="flex: 1 1 150px;"><label for="fecha_fin">Hasta:</label><input type="date" name="fecha_fin" id="fecha_fin" value="<?php echo e($fecha_fin); ?>" required></div>
             <button type="submit" class="btn"><i class="fas fa-search"></i> Generar</button>
@@ -88,6 +155,10 @@ include '../includes/header_admin.php';
     <?php if ($datos_encontrados && $tipo_informe === 'individual'): ?>
         <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px; text-align: right;">
             <a href="generar_informe_pdf.php?id_miembro=<?php echo e($id_miembro_filtro); ?>&fecha_inicio=<?php echo e($fecha_inicio); ?>&fecha_fin=<?php echo e($fecha_fin); ?>" class="btn btn-success" target="_blank"><i class="fas fa-file-pdf"></i> Descargar Informe en PDF</a>
+        </div>
+    <?php elseif ($datos_encontrados && $tipo_informe === 'informe_tareas'): ?>
+        <div style="border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px; text-align: right;">
+            <a href="generar_informe_tareas_pdf.php?id_miembro=<?php echo e($id_miembro_filtro); ?>&fecha_inicio=<?php echo e($fecha_inicio); ?>&fecha_fin=<?php echo e($fecha_fin); ?>" class="btn btn-success" target="_blank"><i class="fas fa-file-pdf"></i> Descargar Informe en PDF</a>
         </div>
     <?php endif; ?>
 </div>
@@ -124,6 +195,41 @@ include '../includes/header_admin.php';
             new Chart(document.getElementById('teamPieChart'), { type: 'pie', data: teamPieData, options: { plugins: { legend: { position: 'right' } } } });
         });
         </script>
+    <?php elseif ($tipo_informe === 'informe_tareas' && $datos_encontrados): ?>
+        <div class="card" style="margin-top: 20px;">
+            <h3><i class="fas fa-tasks"></i> Informe de Tareas</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Creador</th>
+                            <th>Nombre Tarea</th>
+                            <th>Fecha Creación</th>
+                            <th>Fecha Vencimiento</th>
+                            <th>Fecha Finalización</th>
+                            <th>Cumplimiento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($listados['informe_tareas'] as $tarea): ?>
+                            <tr>
+                                <td><?php echo e($tarea['creador']); ?></td>
+                                <td><?php echo e($tarea['nombre_tarea']); ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($tarea['fecha_creacion'])); ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($tarea['fecha_vencimiento'])); ?></td>
+                                <td><?php echo $tarea['fecha_finalizada_usuario'] ? date('d/m/Y', strtotime($tarea['fecha_finalizada_usuario'])) : 'N/A'; ?></td>
+                                <td><?php echo e($tarea['cumplimiento']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="summary" style="margin-top: 20px; text-align: right;">
+                <strong>Total Tareas Completadas:</strong> <?php echo $summary['completadas']; ?><br>
+                <strong>Total Tareas Pendientes:</strong> <?php echo $summary['pendientes']; ?><br>
+                <strong>Total Tareas Vencidas:</strong> <?php echo $summary['vencidas']; ?>
+            </div>
+        </div>
     <?php endif; ?>
 <?php elseif ($fecha_inicio && $fecha_fin): ?>
     <div class="alert alert-info" style="margin-top:20px;">No se encontraron datos para el tipo de informe y el rango de fechas seleccionados.</div>

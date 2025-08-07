@@ -72,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt_update = $pdo->prepare("UPDATE tareas SET estado = 'finalizada_usuario' WHERE id_tarea = ?");
             $stmt_update->execute([$id_tarea]);
 
+            $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)");
+            $stmt_insert->execute([$id_tarea, $id_miembro, 'He Finalizado esta Tarea']);
+
             $creador_email = $tarea_info['creador_email'];
             $creador_nombre = $tarea_info['creador_nombre'];
             $nombre_tarea = $tarea_info['nombre_tarea'];

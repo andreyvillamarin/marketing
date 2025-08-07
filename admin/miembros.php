@@ -45,8 +45,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         catch (PDOException $e) { $error = "Error al eliminar el área."; }
     }
     if (isset($_GET['eliminar_miembro'])) {
-        try { $stmt = $pdo->prepare("DELETE FROM usuarios WHERE id_usuario = ? AND rol != 'admin'"); $stmt->execute([$_GET['eliminar_miembro']]); $mensaje = "Usuario eliminado exitosamente."; } 
-        catch (PDOException $e) { $error = "Error al eliminar el usuario."; }
+        $id_usuario_a_eliminar = $_GET['eliminar_miembro'];
+
+        // No se puede eliminar al propio usuario admin principal o a otros admins
+        $stmt_check = $pdo->prepare("SELECT rol FROM usuarios WHERE id_usuario = ?");
+        $stmt_check->execute([$id_usuario_a_eliminar]);
+        $user_to_delete = $stmt_check->fetch();
+
+        if (!$user_to_delete || $user_to_delete['rol'] === 'admin') {
+            $error = "No se puede eliminar a un administrador.";
+        } else {
+            $pdo->beginTransaction();
+            try {
+                // 1. Des-asignar al usuario de cualquier tarea que tuviera asignada
+                $stmt_unassign = $pdo->prepare("DELETE FROM tareas_asignadas WHERE id_usuario = ?");
+                $stmt_unassign->execute([$id_usuario_a_eliminar]);
+
+                // 2. Encontrar todas las tareas creadas por este usuario para limpiar sus datos relacionados
+                $stmt_find_tasks = $pdo->prepare("SELECT id_tarea FROM tareas WHERE id_admin_creador = ?");
+                $stmt_find_tasks->execute([$id_usuario_a_eliminar]);
+                $tareas_a_eliminar_ids = $stmt_find_tasks->fetchAll(PDO::FETCH_COLUMN);
+
+                if (!empty($tareas_a_eliminar_ids)) {
+                    $placeholders = implode(',', array_fill(0, count($tareas_a_eliminar_ids), '?'));
+                    
+                    // 3. Eliminar recursos de esas tareas (esto no borra los archivos físicos)
+                    $stmt_delete_resources = $pdo->prepare("DELETE FROM recursos_tarea WHERE id_tarea IN ($placeholders)");
+                    $stmt_delete_resources->execute($tareas_a_eliminar_ids);
+
+                    // 4. Eliminar las asignaciones de esas tareas (por si otros estaban asignados)
+                    $stmt_delete_assignments = $pdo->prepare("DELETE FROM tareas_asignadas WHERE id_tarea IN ($placeholders)");
+                    $stmt_delete_assignments->execute($tareas_a_eliminar_ids);
+                }
+
+                // 5. Eliminar las tareas que el usuario creó
+                $stmt_delete_tasks = $pdo->prepare("DELETE FROM tareas WHERE id_admin_creador = ?");
+                $stmt_delete_tasks->execute([$id_usuario_a_eliminar]);
+
+                // 6. Finalmente, eliminar al usuario
+                $stmt_delete_user = $pdo->prepare("DELETE FROM usuarios WHERE id_usuario = ?");
+                $stmt_delete_user->execute([$id_usuario_a_eliminar]);
+
+                $pdo->commit();
+                $mensaje = "Usuario y todos sus datos asociados han sido eliminados exitosamente.";
+
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                error_log("Error al eliminar usuario y sus datos: " . $e->getMessage());
+                $error = "Error crítico al eliminar el usuario. La operación fue revertida. Revise los registros del sistema.";
+            }
+        }
     }
 }
 
