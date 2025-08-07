@@ -7,19 +7,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_seleccionado
     if ($rol_usuario_actual === 'admin') {
         $ids_tareas = isset($_POST['ids_tareas']) ? $_POST['ids_tareas'] : [];
         if (!empty($ids_tareas)) { try { $placeholders = implode(',', array_fill(0, count($ids_tareas), '?')); $stmt = $pdo->prepare("DELETE FROM tareas WHERE id_tarea IN ($placeholders)"); $stmt->execute($ids_tareas); $mensaje = "Tareas seleccionadas eliminadas."; } catch (PDOException $e) { $error = "Error al eliminar las tareas."; }
-        } else { $error = "No se seleccion�1�7�1�7�1�70�1�73 ninguna tarea."; }
+        } else { $error = "No se selecciono ninguna tarea."; }
     }
 }
-$sql = "SELECT t.*, u.nombre_completo as creador FROM tareas t JOIN usuarios u ON t.id_admin_creador = u.id_usuario";
-$params = []; $where_clauses = [];
+$sql = "
+    SELECT
+        t.*,
+        u_creador.nombre_completo as creador,
+        GROUP_CONCAT(DISTINCT u_asignado.nombre_completo SEPARATOR ', ') as miembros_asignados,
+        t.negocio
+    FROM
+        tareas t
+    JOIN
+        usuarios u_creador ON t.id_admin_creador = u_creador.id_usuario
+    LEFT JOIN
+        tareas_asignadas ta ON t.id_tarea = ta.id_tarea
+    LEFT JOIN
+        usuarios u_asignado ON ta.id_usuario = u_asignado.id_usuario
+";
+$params = [];
+$where_clauses = [];
+
 if ($rol_usuario_actual === 'analista') {
     $where_clauses[] = "t.id_admin_creador = ?";
     $params[] = $id_usuario_actual;
 }
-if (!empty($_GET['q'])) { $where_clauses[] = "t.nombre_tarea LIKE ?"; $params[] = '%' . $_GET['q'] . '%'; }
-if (!empty($_GET['estado'])) { $where_clauses[] = "t.estado = ?"; $params[] = $_GET['estado']; }
-if (!empty($where_clauses)) { $sql .= " WHERE " . implode(' AND ', $where_clauses); }
-$sql .= " ORDER BY t.fecha_vencimiento ASC";
+
+if (!empty($_GET['q'])) {
+    $where_clauses[] = "t.nombre_tarea LIKE ?";
+    $params[] = '%' . $_GET['q'] . '%';
+}
+
+if (!empty($_GET['estado'])) {
+    $where_clauses[] = "t.estado = ?";
+    $params[] = $_GET['estado'];
+}
+
+if (!empty($where_clauses)) {
+    $sql .= " WHERE " . implode(' AND ', $where_clauses);
+}
+
+$sql .= " GROUP BY t.id_tarea ORDER BY t.fecha_vencimiento ASC";
 try { $stmt = $pdo->prepare($sql); $stmt->execute($params); $tareas = $stmt->fetchAll(); } 
 catch(PDOException $e) { die("Error al recuperar las tareas: " . $e->getMessage()); }
 include '../includes/header_admin.php';
@@ -44,20 +72,34 @@ include '../includes/header_admin.php';
 </div>
 <form action="tareas.php" method="POST">
     <?php if ($rol_usuario_actual === 'admin'): ?>
-    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('�1�70�1�710�1�76�1�797Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
+    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('Estas Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
     <?php endif; ?>
     <div class="table-wrapper">
-        <table>
-            <thead><tr><?php if ($rol_usuario_actual === 'admin'): ?><th><input type="checkbox" id="selectAll"></th><?php endif; ?><th>Nombre Tarea</th><th>Creador</th><th>Fecha Vencimiento</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr></thead>
+        <table class="tabla-tareas">
+            <thead>
+                <tr>
+                    <?php if ($rol_usuario_actual === 'admin'): ?><th><input type="checkbox" id="selectAll"></th><?php endif; ?>
+                    <th>Nombre Tarea</th>
+                    <th>Creador</th>
+                    <th>Miembro Asignado</th>
+                    <th>Negocio</th>
+                    <th>Fecha Vencimiento</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
             <tbody>
                 <?php if (empty($tareas)): ?>
-                    <tr><td colspan="7" style="text-align:center;">No se encontraron tareas.</td></tr>
+                    <tr><td colspan="<?php echo ($rol_usuario_actual === 'admin') ? '9' : '8'; ?>" style="text-align:center;">No se encontraron tareas.</td></tr>
                 <?php else: ?>
                     <?php foreach ($tareas as $tarea): ?>
                         <tr>
                             <?php if ($rol_usuario_actual === 'admin'): ?><td><input type="checkbox" name="ids_tareas[]" value="<?php echo $tarea['id_tarea']; ?>"></td><?php endif; ?>
                             <td><?php echo e($tarea['nombre_tarea']); ?></td>
                             <td><?php echo e($tarea['creador']); ?></td>
+                            <td><?php echo e($tarea['miembros_asignados'] ?? 'N/A'); ?></td>
+                            <td><?php echo e($tarea['negocio'] ?? 'N/A'); ?></td>
                             <td><?php echo date('d/m/Y H:i', strtotime($tarea['fecha_vencimiento'])); ?></td>
                             <td>
                                 <?php echo mostrar_estado_tarea($tarea); ?>

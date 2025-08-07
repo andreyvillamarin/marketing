@@ -14,8 +14,17 @@ $view_mode = $_GET['view'] ?? 'list'; // Antes decía 'calendar', ahora 'list'
 // --- FIN DE LA MODIFICACIÓN ---
 
 try {
-    $stmt = $pdo->prepare("SELECT t.*, u.nombre_completo as nombre_creador FROM tareas t JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea JOIN usuarios u ON t.id_admin_creador = u.id_usuario WHERE ta.id_usuario = ? AND t.estado != 'cerrada' ORDER BY t.fecha_vencimiento ASC");
-    $stmt->execute([$id_miembro]);
+    // Se elimina la lógica de búsqueda del servidor. Ahora se hace en el cliente con JS.
+    $sql = "
+        SELECT t.*, u.nombre_completo as nombre_creador 
+        FROM tareas t 
+        JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea 
+        JOIN usuarios u ON t.id_admin_creador = u.id_usuario 
+        WHERE ta.id_usuario = :id_miembro AND t.estado IN ('pendiente', 'finalizada_usuario')
+        ORDER BY t.fecha_vencimiento ASC
+    ";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute(['id_miembro' => $id_miembro]);
     $tareas = $stmt->fetchAll();
 } catch(PDOException $e) { die("Error al recuperar tus tareas: " . $e->getMessage()); }
 
@@ -33,6 +42,12 @@ include '../includes/header_miembro.php';
 
 <h2>Mis Tareas Asignadas</h2>
 <p>Hola, <?php echo e($_SESSION['user_nombre']); ?>. Aquí puedes ver tus tareas pendientes.</p>
+
+<div class="card" style="margin-bottom: 20px; padding: 15px;">
+    <div class="form-group" style="margin: 0;">
+        <input type="text" id="liveSearchInput" placeholder="Escribe para filtrar por tarea, negocio o creador..." style="width: 100%;">
+    </div>
+</div>
 
 <div class="view-switcher" style="margin-bottom: 20px;">
     <a href="?view=calendar" class="btn <?php echo $view_mode === 'calendar' ? 'btn-primary' : 'btn-secondary'; ?>"><i class="fas fa-calendar-alt"></i> Vista Calendario</a>
@@ -81,10 +96,10 @@ include '../includes/header_miembro.php';
 <?php endif; ?>
 
 <script>
-if (document.getElementById('calendario')) {
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Lógica para el Calendario ---
+    if (document.getElementById('calendario')) {
         var calendarEl = document.getElementById('calendario');
-
         let calendarOptions = {
             locale: 'es', 
             buttonText: { today: 'Hoy', month: 'Mes', week: 'Semana', list: 'Lista' },
@@ -102,8 +117,57 @@ if (document.getElementById('calendario')) {
 
         var calendar = new FullCalendar.Calendar(calendarEl, calendarOptions);
         calendar.render();
-    });
-}
+    }
+
+    // --- Lógica para el Buscador en Tiempo Real ---
+    const searchInput = document.getElementById('liveSearchInput');
+    const taskRows = document.querySelectorAll('.table-wrapper tbody tr');
+
+    if (searchInput && taskRows.length > 0) {
+        // Asegurarse de que la fila de "no hay tareas" no se oculte si es la única.
+        const noTasksRow = document.querySelector('.table-wrapper tbody tr td[colspan="8"]');
+
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            let visibleCount = 0;
+
+            taskRows.forEach(row => {
+                if (row.contains(noTasksRow)) {
+                    return; // No filtrar la fila de "no hay tareas"
+                }
+
+                const taskName = row.cells[0].textContent.toLowerCase();
+                const creatorName = row.cells[1].textContent.toLowerCase();
+                const businessName = row.cells[3].textContent.toLowerCase();
+                const searchableText = `${taskName} ${creatorName} ${businessName}`;
+
+                if (searchableText.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Opcional: Mostrar un mensaje si la búsqueda no arroja resultados
+            if (noTasksRow) {
+                if (visibleCount === 0 && searchTerm !== '') {
+                    noTasksRow.parentElement.style.display = ''; // Mostrar la fila del `<tr>`
+                    noTasksRow.textContent = 'No se encontraron tareas que coincidan con la búsqueda.';
+                    noTasksRow.style.textAlign = 'center';
+                } else if (visibleCount > 0) {
+                     noTasksRow.parentElement.style.display = 'none'; // Ocultar si hay resultados
+                } else if (searchTerm === '') {
+                    // Si el input está vacío, restaurar mensaje original y ocultar si hay tareas
+                    noTasksRow.textContent = '¡Felicidades! No tienes tareas pendientes.';
+                    if(taskRows.length > 1) { // Si hay más que solo la fila de "no hay tareas"
+                        noTasksRow.parentElement.style.display = 'none';
+                    }
+                }
+            }
+        });
+    }
+});
 </script>
 
 <?php include '../includes/footer_miembro.php'; ?>

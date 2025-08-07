@@ -36,8 +36,13 @@ if ($rol_usuario_actual === 'miembro') {
 
 // --- Obtener todos los datos necesarios para el informe ---
 try {
-    // Detalles de la tarea
-    $stmt_tarea = $pdo->prepare("SELECT * FROM tareas WHERE id_tarea = ?");
+    // Detalles de la tarea, incluyendo el nombre del creador
+    $stmt_tarea = $pdo->prepare("
+        SELECT t.*, u.nombre_completo as nombre_creador 
+        FROM tareas t 
+        JOIN usuarios u ON t.id_admin_creador = u.id_usuario 
+        WHERE t.id_tarea = ?
+    ");
     $stmt_tarea->execute([$id_tarea]);
     $tarea = $stmt_tarea->fetch();
     if (!$tarea) die("La tarea no existe.");
@@ -86,11 +91,14 @@ $html = "
         <h2>Detalles de la Tarea</h2>
         <p><strong>ID de Tarea:</strong> T-" . e($tarea['id_tarea']) . "</p>
         <p><strong>Nombre:</strong> " . e($tarea['nombre_tarea']) . "</p>
+        <p><strong>Creado por:</strong> " . e($tarea['nombre_creador']) . "</p>
+        <p><strong>Negocio:</strong> " . e($tarea['negocio'] ?? 'No especificado') . "</p>
+        <p><strong>Número de Piezas:</strong> " . e($tarea['numero_piezas'] ?? 'No especificado') . "</p>
         <p><strong>Descripción:</strong> " . nl2br(e($tarea['descripcion'])) . "</p>
         <p><strong>Fecha de Vencimiento:</strong> " . date('d/m/Y H:i', strtotime($tarea['fecha_vencimiento'])) . "</p>
         <p><strong>Prioridad:</strong> " . ucfirst(e($tarea['prioridad'])) . "</p>
         <p><strong>Estado Actual:</strong> " . ucfirst(str_replace('_', ' ', e($tarea['estado']))) . "</p>
-        <p><strong>Miembros Asignados:</strong> " . implode(', ', $miembros_asignados) . "</p>
+        <p><strong>Miembros Asignados:</strong> " . (!empty($miembros_asignados) ? implode(', ', $miembros_asignados) : 'Ninguno') . "</p>
     </div>
 
     <div class='section'>

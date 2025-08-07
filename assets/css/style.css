@@ -27,10 +27,17 @@ textarea { resize: vertical; min-height: 100px; }
 .table-wrapper { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
 table th, table td { padding: 12px; border: 1px solid #ddd; text-align: left; vertical-align: middle; }
-table th { background-color: #f2f2f2; }
+table th { background-color: #f2f2f2; font-weight: bold; }
 table tr:nth-child(even) { background-color: #f9f9f9; }
 table tr:hover { background-color: #f1f1f1; }
 .actions a, .actions button { margin-right: 5px; }
+
+/* Estilos específicos para la tabla de tareas para reducir tamaño */
+.tabla-tareas th, .tabla-tareas td {
+    padding: 8px;
+    font-size: 0.9em;
+    vertical-align: middle;
+}
 /* Tarjetas y Contenedores */
 .card { border: 1px solid #ddd; border-radius: var(--border-radius); padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); background-color: #fff; }
 .card h3 { margin-top: 0; }
