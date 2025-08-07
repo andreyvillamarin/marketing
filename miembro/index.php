@@ -14,7 +14,7 @@ $view_mode = $_GET['view'] ?? 'list'; // Antes decía 'calendar', ahora 'list'
 // --- FIN DE LA MODIFICACIÓN ---
 
 try {
-    $stmt = $pdo->prepare("SELECT t.* FROM tareas t JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea WHERE ta.id_usuario = ? AND t.estado != 'cerrada' ORDER BY t.fecha_vencimiento ASC");
+    $stmt = $pdo->prepare("SELECT t.*, u.nombre_completo as nombre_creador FROM tareas t JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea JOIN usuarios u ON t.id_admin_creador = u.id_usuario WHERE ta.id_usuario = ? AND t.estado != 'cerrada' ORDER BY t.fecha_vencimiento ASC");
     $stmt->execute([$id_miembro]);
     $tareas = $stmt->fetchAll();
 } catch(PDOException $e) { die("Error al recuperar tus tareas: " . $e->getMessage()); }
@@ -47,14 +47,17 @@ include '../includes/header_miembro.php';
     <div class="card">
         <div class="table-wrapper">
             <table>
-                <thead><tr><th>Nombre Tarea</th><th>Fecha Vencimiento</th><th>Prioridad</th><th>Estado</th><th>Acción</th></tr></thead>
+                <thead><tr><th>Nombre Tarea</th><th>Creado por</th><th>Nº Piezas</th><th>Negocio</th><th>Fecha Vencimiento</th><th>Prioridad</th><th>Estado</th><th>Acción</th></tr></thead>
                 <tbody>
                     <?php if(empty($tareas)): ?>
-                        <tr><td colspan="5" style="text-align:center;">¡Felicidades! No tienes tareas pendientes.</td></tr>
+                        <tr><td colspan="8" style="text-align:center;">¡Felicidades! No tienes tareas pendientes.</td></tr>
                     <?php else: ?>
                         <?php foreach($tareas as $tarea): ?>
                             <tr>
                                 <td><?php echo e($tarea['nombre_tarea']); ?></td>
+                                <td><?php echo e($tarea['nombre_creador']); ?></td>
+                                <td><?php echo e($tarea['numero_piezas']); ?></td>
+                                <td><?php echo e($tarea['negocio']); ?></td>
                                 <td><span class="icon-text"><i class="fas fa-calendar-day"></i> <?php echo date('d/m/Y H:i', strtotime($tarea['fecha_vencimiento'])); ?></span></td>
                                 <td>
                                     <?php

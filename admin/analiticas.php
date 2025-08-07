@@ -4,12 +4,23 @@ require_once '../includes/config.php';
 require_once '../includes/db.php';
 require_once '../includes/funciones.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['user_rol'] !== 'admin') { header("Location: index.php"); exit(); }
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_rol'], ['admin', 'analista', 'miembro'])) {
+    header("Location: " . BASE_URL . "/admin/login.php");
+    exit();
+}
 
 $tipo_informe = $_GET['tipo_informe'] ?? 'individual';
 $id_miembro_filtro = $_GET['id_miembro'] ?? null;
 $fecha_inicio = $_GET['fecha_inicio'] ?? null;
 $fecha_fin = $_GET['fecha_fin'] ?? null;
+
+if ($_SESSION['user_rol'] === 'miembro' || $_SESSION['user_rol'] === 'analista') {
+    $tipo_informe = 'informe_tareas';
+}
+
+if ($_SESSION['user_rol'] === 'miembro' || $_SESSION['user_rol'] === 'analista') {
+    $id_miembro_filtro = $_SESSION['user_id'];
+}
 
 $miembros = $pdo->query("SELECT id_usuario, nombre_completo FROM usuarios WHERE rol != 'admin' ORDER BY nombre_completo ASC")->fetchAll();
 $datos_graficos = [];
@@ -73,6 +84,8 @@ if ($fecha_inicio && $fecha_fin) {
                     uc.nombre_completo AS creador,
                     t.fecha_creacion,
                     t.fecha_vencimiento,
+                    t.numero_piezas,
+                    t.negocio,
                     (SELECT MAX(fecha_comentario) FROM comentarios_tarea WHERE id_tarea = t.id_tarea AND comentario LIKE 'He Finalizado esta Tarea') AS fecha_finalizada_usuario,
                     (CASE
                         WHEN t.estado = 'completada' AND (SELECT MAX(fecha_comentario) FROM comentarios_tarea WHERE id_tarea = t.id_tarea AND comentario LIKE 'He Finalizado esta Tarea') <= t.fecha_vencimiento THEN 'A tiempo'
@@ -99,10 +112,13 @@ if ($fecha_inicio && $fecha_fin) {
 
             if (!empty($listados['informe_tareas'])) {
                 $datos_encontrados = true;
+                $datos_encontrados = true;
                 $summary = [
                     'completadas' => 0,
                     'pendientes' => 0,
                     'vencidas' => 0,
+                    'total_piezas' => 0,
+                    'por_negocio' => [],
                 ];
                 foreach ($listados['informe_tareas'] as $tarea) {
                     if ($tarea['cumplimiento'] === 'A tiempo' || $tarea['cumplimiento'] === 'Con retraso') {
@@ -113,8 +129,42 @@ if ($fecha_inicio && $fecha_fin) {
                             $summary['vencidas']++;
                         }
                     }
+                    $summary['total_piezas'] += $tarea['numero_piezas'];
+                    if (!empty($tarea['negocio'])) {
+                        if (!isset($summary['por_negocio'][$tarea['negocio']])) {
+                            $summary['por_negocio'][$tarea['negocio']] = 0;
+                        }
+                        $summary['por_negocio'][$tarea['negocio']]++;
+                    }
                 }
             }
+        } elseif ($tipo_informe === 'piezas_miembro') {
+            $stmt = $pdo->prepare("
+                SELECT u.nombre_completo, SUM(t.numero_piezas) as total_piezas
+                FROM tareas t
+                JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea
+                JOIN usuarios u ON ta.id_usuario = u.id_usuario
+                WHERE t.fecha_creacion BETWEEN ? AND ?
+                GROUP BY u.id_usuario
+                ORDER BY total_piezas DESC
+            ");
+            $stmt->execute([$fecha_inicio, $fecha_fin_sql]);
+            $data = $stmt->fetchAll();
+            $datos_graficos['piezas_miembro_bar'] = ['labels' => array_column($data, 'nombre_completo'), 'data' => array_column($data, 'total_piezas')];
+            if(!empty($data)) $datos_encontrados = true;
+
+        } elseif ($tipo_informe === 'requerimientos_negocio') {
+            $stmt = $pdo->prepare("
+                SELECT negocio, COUNT(id_tarea) as total_tareas
+                FROM tareas
+                WHERE fecha_creacion BETWEEN ? AND ? AND negocio IS NOT NULL AND negocio != ''
+                GROUP BY negocio
+                ORDER BY total_tareas DESC
+            ");
+            $stmt->execute([$fecha_inicio, $fecha_fin_sql]);
+            $data = $stmt->fetchAll();
+            $datos_graficos['requerimientos_negocio_pie'] = ['labels' => array_column($data, 'negocio'), 'data' => array_column($data, 'total_tareas')];
+            if(!empty($data)) $datos_encontrados = true;
         }
     } catch(PDOException $e) { $error = "Error al generar las analíticas: " . $e->getMessage(); }
 }
@@ -127,14 +177,20 @@ include '../includes/header_admin.php';
     <form action="analiticas.php" method="GET">
         <h3><i class="fas fa-filter"></i> Filtrar Datos</h3>
         <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <?php if ($_SESSION['user_rol'] === 'admin'): ?>
             <div class="form-group" style="flex: 1 1 200px;">
                 <label for="tipo_informe">Tipo de Informe:</label>
                 <select name="tipo_informe" id="tipo_informe">
                     <option value="individual" <?php if($tipo_informe == 'individual') echo 'selected'; ?>>Rendimiento Individual</option>
                     <option value="equipo" <?php if($tipo_informe == 'equipo') echo 'selected'; ?>>Comparativa de Equipo</option>
                     <option value="informe_tareas" <?php if ($tipo_informe == 'informe_tareas') echo 'selected'; ?>>Informe de Tareas</option>
+                    <option value="piezas_miembro" <?php if ($tipo_informe == 'piezas_miembro') echo 'selected'; ?>>Número de piezas por miembro</option>
+                    <option value="requerimientos_negocio" <?php if ($tipo_informe == 'requerimientos_negocio') echo 'selected'; ?>>Requerimientos por negocio</option>
                 </select>
             </div>
+            <?php endif; ?>
+            
+            <?php if ($_SESSION['user_rol'] === 'admin'): ?>
             <div class="form-group" style="flex: 1 1 200px;" id="miembro_selector_group">
                 <label for="id_miembro">Seleccionar Usuario:</label>
                 <select name="id_miembro" id="id_miembro">
@@ -146,6 +202,7 @@ include '../includes/header_admin.php';
                     <?php endforeach; ?>
                 </select>
             </div>
+            <?php endif; ?>
             <div class="form-group" style="flex: 1 1 150px;"><label for="fecha_inicio">Desde:</label><input type="date" name="fecha_inicio" id="fecha_inicio" value="<?php echo e($fecha_inicio); ?>" required></div>
             <div class="form-group" style="flex: 1 1 150px;"><label for="fecha_fin">Hasta:</label><input type="date" name="fecha_fin" id="fecha_fin" value="<?php echo e($fecha_fin); ?>" required></div>
             <button type="submit" class="btn"><i class="fas fa-search"></i> Generar</button>
@@ -204,6 +261,8 @@ include '../includes/header_admin.php';
                         <tr>
                             <th>Creador</th>
                             <th>Nombre Tarea</th>
+                            <th>No Piezas</th>
+                            <th>Negocio</th>
                             <th>Fecha Creación</th>
                             <th>Fecha Vencimiento</th>
                             <th>Fecha Finalización</th>
@@ -215,6 +274,8 @@ include '../includes/header_admin.php';
                             <tr>
                                 <td><?php echo e($tarea['creador']); ?></td>
                                 <td><?php echo e($tarea['nombre_tarea']); ?></td>
+                                <td><?php echo e($tarea['numero_piezas']); ?></td>
+                                <td><?php echo e($tarea['negocio']); ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($tarea['fecha_creacion'])); ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($tarea['fecha_vencimiento'])); ?></td>
                                 <td><?php echo $tarea['fecha_finalizada_usuario'] ? date('d/m/Y', strtotime($tarea['fecha_finalizada_usuario'])) : 'N/A'; ?></td>
@@ -227,9 +288,45 @@ include '../includes/header_admin.php';
             <div class="summary" style="margin-top: 20px; text-align: right;">
                 <strong>Total Tareas Completadas:</strong> <?php echo $summary['completadas']; ?><br>
                 <strong>Total Tareas Pendientes:</strong> <?php echo $summary['pendientes']; ?><br>
-                <strong>Total Tareas Vencidas:</strong> <?php echo $summary['vencidas']; ?>
+                <strong>Total Tareas Vencidas:</strong> <?php echo $summary['vencidas']; ?><br>
+                <hr>
+                <strong>Total de Piezas:</strong> <?php echo $summary['total_piezas']; ?><br>
+                <strong>Tareas por Negocio:</strong><br>
+                <?php if (empty($summary['por_negocio'])): ?>
+                    <span>No hay datos de negocio.</span>
+                <?php else: ?>
+                    <?php foreach ($summary['por_negocio'] as $negocio => $cantidad): ?>
+                        - <?php echo e($negocio); ?>: <?php echo $cantidad; ?><br>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
+    <?php elseif ($tipo_informe === 'piezas_miembro'): ?>
+        <div style="max-width: 800px; margin: 20px auto;">
+            <div class="chart-container"><h4><i class="fas fa-chart-bar"></i> Número de piezas por Miembro</h4><canvas id="piezasMiembroBarChart"></canvas></div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const piezasMiembroData = { labels: <?php echo json_encode($datos_graficos['piezas_miembro_bar']['labels']); ?>, datasets: [{ label: 'Total Piezas', data: <?php echo json_encode($datos_graficos['piezas_miembro_bar']['data']); ?>, backgroundColor: 'rgba(255, 159, 64, 0.7)' }]};
+            new Chart(document.getElementById('piezasMiembroBarChart'), { type: 'bar', data: piezasMiembroData, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+        });
+        </script>
+    <?php elseif ($tipo_informe === 'requerimientos_negocio'): ?>
+        <div style="max-width: 600px; margin: 20px auto;">
+            <div class="chart-container"><h4><i class="fas fa-pie-chart"></i> Requerimientos por Negocio</h4><canvas id="requerimientosNegocioPieChart"></canvas></div>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const requerimientosNegocioData = {
+                labels: <?php echo json_encode($datos_graficos['requerimientos_negocio_pie']['labels']); ?>,
+                datasets: [{
+                    data: <?php echo json_encode($datos_graficos['requerimientos_negocio_pie']['data']); ?>,
+                    backgroundColor: ['rgba(255, 99, 132, 0.7)','rgba(54, 162, 235, 0.7)','rgba(255, 206, 86, 0.7)','rgba(75, 192, 192, 0.7)','rgba(153, 102, 255, 0.7)','rgba(255, 159, 64, 0.7)']
+                }]
+            };
+            new Chart(document.getElementById('requerimientosNegocioPieChart'), { type: 'pie', data: requerimientosNegocioData });
+        });
+        </script>
     <?php endif; ?>
 <?php elseif ($fecha_inicio && $fecha_fin): ?>
     <div class="alert alert-info" style="margin-top:20px;">No se encontraron datos para el tipo de informe y el rango de fechas seleccionados.</div>

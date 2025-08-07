@@ -23,12 +23,40 @@ $tarea_info = $stmt_tarea_info->fetch();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['agregar_comentario'])) {
         $comentario = trim($_POST['comentario']);
-        if (!empty($comentario)) {
+        $nombre_archivo = null;
+        $ruta_archivo = null;
+
+        if (isset($_FILES['archivo_comentario']) && $_FILES['archivo_comentario']['error'] == UPLOAD_ERR_OK) {
+            $archivo_tmp = $_FILES['archivo_comentario']['tmp_name'];
+            $nombre_original = basename($_FILES['archivo_comentario']['name']);
+            $extension = strtolower(pathinfo($nombre_original, PATHINFO_EXTENSION));
+            $permitidos = ['pdf', 'jpg', 'jpeg', 'png'];
+
+            if (in_array($extension, $permitidos)) {
+                $nombre_archivo = time() . '_' . $nombre_original;
+                $ruta_destino = __DIR__ . '/../uploads/' . $nombre_archivo;
+                if (move_uploaded_file($archivo_tmp, $ruta_destino)) {
+                    $ruta_archivo = 'uploads/' . $nombre_archivo;
+                } else {
+                    $error = "Error al mover el archivo subido.";
+                    $nombre_archivo = null;
+                }
+            } else {
+                $error = "Tipo de archivo no permitido. Solo se aceptan PDF, JPG, JPEG y PNG.";
+            }
+        }
+
+        if (empty($comentario) && empty($ruta_archivo)) {
+            $error = "Debes escribir un comentario o adjuntar un archivo.";
+        }
+        
+        if (!$error && (!empty($comentario) || !empty($ruta_archivo))) {
             $pdo->beginTransaction();
             try {
-                $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario) VALUES (?, ?, ?)");
-                $stmt_insert->execute([$id_tarea, $id_miembro, $comentario]);
+                $stmt_insert = $pdo->prepare("INSERT INTO comentarios_tarea (id_tarea, id_usuario, comentario, nombre_archivo, ruta_archivo) VALUES (?, ?, ?, ?, ?)");
+                $stmt_insert->execute([$id_tarea, $id_miembro, $comentario, $nombre_archivo, $ruta_archivo]);
 
+                // Notificación por correo (código existente)
                 $stmt_usuarios = $pdo->prepare("
                     SELECT u.email, u.nombre_completo, u.id_usuario FROM usuarios u
                     JOIN tareas_asignadas ta ON u.id_usuario = ta.id_usuario
@@ -125,6 +153,9 @@ include '../includes/header_miembro.php';
         <div class="card">
             <h3>Información Principal</h3>
             <p><strong>Descripción:</strong> <?php echo nl2br(e($tarea_info['descripcion'])); ?></p>
+            <p><strong>Creado por:</strong> <?php echo e($tarea_info['creador_nombre']); ?></p>
+            <p><strong>Número de piezas:</strong> <?php echo e($tarea_info['numero_piezas']); ?></p>
+            <p><strong>Negocio:</strong> <?php echo e($tarea_info['negocio']); ?></p>
             <p><strong>Fecha de Vencimiento:</strong> <?php echo date('d/m/Y H:i', strtotime($tarea_info['fecha_vencimiento'])); ?></p>
             <p><strong>Prioridad:</strong> <span class="icon-text icon-prioridad-<?php echo e($tarea_info['prioridad']); ?>"><?php echo e(ucfirst($tarea_info['prioridad'])); ?></span></p>
             <p><strong>Estado Actual:</strong> <?php echo mostrar_estado_tarea($tarea_info); ?></p>
@@ -136,8 +167,50 @@ include '../includes/header_miembro.php';
         </div>
         <div class="card">
             <h3>Interacción y Comentarios</h3>
-            <?php if (!empty($lista_comentarios)): ?><div class="chat-box"><?php foreach ($lista_comentarios as $comentario): ?><div class="comment <?php echo ($comentario['rol'] === 'admin' || $comentario['rol'] === 'analista') ? 'comment-admin' : 'comment-miembro'; ?>"><p><strong><?php echo e($comentario['nombre_completo']); ?>:</strong></p><p><?php echo nl2br(e($comentario['comentario'])); ?></p><div class="meta"><?php echo date('d/m/Y H:i', strtotime($comentario['fecha_comentario'])); ?></div></div><?php endforeach; ?></div><?php else: ?><p style="text-align: center; color: #777; padding: 20px 0;">No hay comentarios aún.</p><?php endif; ?>
-            <form action="tarea.php?id=<?php echo $id_tarea; ?>" method="POST" style="margin-top:20px;"><div class="form-group"><label for="comentario">Añadir Comentario:</label><textarea name="comentario" id="comentario" required rows="4"></textarea></div><button type="submit" name="agregar_comentario" class="btn">Enviar Comentario</button></form>
+            <?php if (!empty($lista_comentarios)): ?>
+                <div class="chat-box">
+                    <?php foreach ($lista_comentarios as $comentario): ?>
+                        <div class="comment <?php echo ($comentario['rol'] === 'admin' || $comentario['rol'] === 'analista') ? 'comment-admin' : 'comment-miembro'; ?>">
+                            <p><strong><?php echo e($comentario['nombre_completo']); ?>:</strong></p>
+                            <?php if (!empty($comentario['comentario'])): ?>
+                                <p><?php echo nl2br(e($comentario['comentario'])); ?></p>
+                            <?php endif; ?>
+                            <?php if (!empty($comentario['ruta_archivo'])): ?>
+                                <?php
+                                $ruta_archivo = e($comentario['ruta_archivo']);
+                                $nombre_archivo = e($comentario['nombre_archivo']);
+                                $extension = strtolower(pathinfo($ruta_archivo, PATHINFO_EXTENSION));
+                                $is_image = in_array($extension, ['jpg', 'jpeg', 'png', 'gif']);
+                                ?>
+                                <div class="attachment">
+                                    <p><strong>Archivo adjunto:</strong></p>
+                                    <a href="../<?php echo $ruta_archivo; ?>" target="_blank" class="resource-link">
+                                        <?php if ($is_image): ?>
+                                            <img src="../<?php echo $ruta_archivo; ?>" alt="<?php echo $nombre_archivo; ?>" style="max-width: 100px; max-height: 100px; border-radius: 5px; margin-top: 5px;">
+                                        <?php else: ?>
+                                            <i class="fas fa-file-alt"></i> <?php echo $nombre_archivo; ?>
+                                        <?php endif; ?>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
+                            <div class="meta"><?php echo date('d/m/Y H:i', strtotime($comentario['fecha_comentario'])); ?></div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php else: ?>
+                <p style="text-align: center; color: #777; padding: 20px 0;">No hay comentarios aún.</p>
+            <?php endif; ?>
+            <form action="tarea.php?id=<?php echo $id_tarea; ?>" method="POST" enctype="multipart/form-data" style="margin-top:20px;">
+                <div class="form-group">
+                    <label for="comentario">Añadir Comentario:</label>
+                    <textarea name="comentario" id="comentario" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="archivo_comentario">Adjuntar archivo (opcional, PDF o imagen):</label>
+                    <input type="file" name="archivo_comentario" id="archivo_comentario" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+                <button type="submit" name="agregar_comentario" class="btn">Enviar Comentario</button>
+            </form>
         </div>
     </div>
 

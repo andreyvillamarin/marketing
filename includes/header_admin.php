@@ -24,6 +24,7 @@
                 <a href="<?php echo BASE_URL; ?>/admin/crear_tarea.php">Crear Tarea</a>
                 <a href="<?php echo BASE_URL; ?>/admin/tareas.php">Tareas Creadas por Mí</a>
                 <a href="<?php echo BASE_URL; ?>/admin/mis_tareas.php">Mis Tareas Asignadas</a>
+                <a href="<?php echo BASE_URL; ?>/admin/analiticas.php">Analíticas</a>
             <?php endif; ?>
         <?php endif; ?>
         <a href="<?php echo BASE_URL; ?>/admin/perfil.php">Mi Perfil</a>

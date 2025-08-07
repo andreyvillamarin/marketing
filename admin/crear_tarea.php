@@ -18,14 +18,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fecha_vencimiento = $_POST['fecha_vencimiento'];
     $prioridad = $_POST['prioridad'];
     $miembros_asignados = isset($_POST['miembros_asignados']) ? $_POST['miembros_asignados'] : [];
+    $numero_piezas = isset($_POST['numero_piezas']) && $_POST['numero_piezas'] !== '' ? (int)$_POST['numero_piezas'] : 0;
+    $negocio = isset($_POST['negocio']) ? trim($_POST['negocio']) : '';
 
     if (empty($nombre_tarea) || empty($fecha_vencimiento) || empty($prioridad) || empty($miembros_asignados)) {
         $error = 'Todos los campos marcados con * son obligatorios.';
     } else {
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare("INSERT INTO tareas (nombre_tarea, descripcion, fecha_vencimiento, prioridad, id_admin_creador, estado) VALUES (?, ?, ?, ?, ?, 'pendiente')");
-            $stmt->execute([$nombre_tarea, $descripcion, $fecha_vencimiento, $prioridad, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("INSERT INTO tareas (nombre_tarea, descripcion, fecha_vencimiento, prioridad, id_admin_creador, estado, numero_piezas, negocio) VALUES (?, ?, ?, ?, ?, 'pendiente', ?, ?)");
+            $stmt->execute([$nombre_tarea, $descripcion, $fecha_vencimiento, $prioridad, $_SESSION['user_id'], $numero_piezas, $negocio]);
             $id_tarea = $pdo->lastInsertId();
             $stmt_asignar = $pdo->prepare("INSERT INTO tareas_asignadas (id_tarea, id_usuario) VALUES (?, ?)");
             foreach ($miembros_asignados as $id_miembro) {
@@ -100,6 +102,22 @@ include '../includes/header_admin.php';
                 <option value="baja">Baja</option>
                 <option value="media" selected>Media</option>
                 <option value="alta">Alta</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="numero_piezas">Número de piezas</label>
+            <input type="number" id="numero_piezas" name="numero_piezas" value="0" min="0">
+        </div>
+        <div class="form-group">
+            <label for="negocio">Negocio</label>
+            <select id="negocio" name="negocio">
+                <option value="">Seleccione un negocio</option>
+                <option value="Recreacion">Recreación</option>
+                <option value="Educacion">Educación</option>
+                <option value="Gestion 4%">Gestión 4%</option>
+                <option value="MPC">MPC</option>
+                <option value="Credito">Crédito</option>
+                <option value="Interna">Interna</option>
             </select>
         </div>
         <div class="form-group">

@@ -7,14 +7,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_seleccionado
     if ($rol_usuario_actual === 'admin') {
         $ids_tareas = isset($_POST['ids_tareas']) ? $_POST['ids_tareas'] : [];
         if (!empty($ids_tareas)) { try { $placeholders = implode(',', array_fill(0, count($ids_tareas), '?')); $stmt = $pdo->prepare("DELETE FROM tareas WHERE id_tarea IN ($placeholders)"); $stmt->execute($ids_tareas); $mensaje = "Tareas seleccionadas eliminadas."; } catch (PDOException $e) { $error = "Error al eliminar las tareas."; }
-        } else { $error = "No se seleccion„1¤7„1¤7„1¤70„1¤73 ninguna tarea."; }
+        } else { $error = "No se seleccionï¿½1ï¿½7ï¿½1ï¿½7ï¿½1ï¿½70ï¿½1ï¿½73 ninguna tarea."; }
     }
 }
 $sql = "SELECT t.*, u.nombre_completo as creador FROM tareas t JOIN usuarios u ON t.id_admin_creador = u.id_usuario";
 $params = []; $where_clauses = [];
 if ($rol_usuario_actual === 'analista') {
-    $where_clauses[] = "(t.id_admin_creador = ? OR t.id_tarea IN (SELECT ta.id_tarea FROM tareas_asignadas ta WHERE ta.id_usuario = ?))";
-    $params[] = $id_usuario_actual; $params[] = $id_usuario_actual;
+    $where_clauses[] = "t.id_admin_creador = ?";
+    $params[] = $id_usuario_actual;
 }
 if (!empty($_GET['q'])) { $where_clauses[] = "t.nombre_tarea LIKE ?"; $params[] = '%' . $_GET['q'] . '%'; }
 if (!empty($_GET['estado'])) { $where_clauses[] = "t.estado = ?"; $params[] = $_GET['estado']; }
@@ -44,7 +44,7 @@ include '../includes/header_admin.php';
 </div>
 <form action="tareas.php" method="POST">
     <?php if ($rol_usuario_actual === 'admin'): ?>
-    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('„1¤70„1¤710„1¤76„1¤797Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
+    <button type="submit" name="eliminar_seleccionados" class="btn btn-danger" onclick="return confirm('ï¿½1ï¿½70ï¿½1ï¿½710ï¿½1ï¿½76ï¿½1ï¿½797Seguro?');" style="margin-top: 20px;"><i class="fas fa-trash-can"></i> Eliminar Seleccionados</button>
     <?php endif; ?>
     <div class="table-wrapper">
         <table>

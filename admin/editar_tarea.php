@@ -16,6 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fecha_vencimiento = $_POST['fecha_vencimiento'];
         $prioridad = $_POST['prioridad'];
         $miembros_asignados_nuevos = isset($_POST['miembros_asignados']) ? $_POST['miembros_asignados'] : [];
+        $numero_piezas = isset($_POST['numero_piezas']) && $_POST['numero_piezas'] !== '' ? (int)$_POST['numero_piezas'] : 0;
+        $negocio = isset($_POST['negocio']) ? trim($_POST['negocio']) : '';
         if (empty($nombre_tarea) || empty($fecha_vencimiento) || empty($prioridad)) {
             $error = 'El nombre, la fecha de vencimiento y la prioridad son obligatorios.';
         } else {
@@ -24,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ids_miembros_originales = $stmt_originales->fetchAll(PDO::FETCH_COLUMN);
             $pdo->beginTransaction();
             try {
-                $stmt_update = $pdo->prepare("UPDATE tareas SET nombre_tarea = ?, descripcion = ?, fecha_vencimiento = ?, prioridad = ? WHERE id_tarea = ?");
-                $stmt_update->execute([$nombre_tarea, $descripcion, $fecha_vencimiento, $prioridad, $id_tarea]);
+                $stmt_update = $pdo->prepare("UPDATE tareas SET nombre_tarea = ?, descripcion = ?, fecha_vencimiento = ?, prioridad = ?, numero_piezas = ?, negocio = ? WHERE id_tarea = ?");
+                $stmt_update->execute([$nombre_tarea, $descripcion, $fecha_vencimiento, $prioridad, $numero_piezas, $negocio, $id_tarea]);
                 $stmt_delete_asignados = $pdo->prepare("DELETE FROM tareas_asignadas WHERE id_tarea = ?");
                 $stmt_delete_asignados->execute([$id_tarea]);
                 if (!empty($miembros_asignados_nuevos)) {
@@ -203,6 +205,22 @@ include '../includes/header_admin.php';
             <div class="form-group"><label>Descripción</label><textarea name="descripcion" rows="5"><?php echo e($tarea['descripcion']); ?></textarea></div>
             <div class="form-group"><label>Fecha Vencimiento (*)</label><input type="datetime-local" name="fecha_vencimiento" value="<?php echo date('Y-m-d\TH:i', strtotime($tarea['fecha_vencimiento'])); ?>" required></div>
             <div class="form-group"><label>Prioridad (*)</label><select name="prioridad" required><option value="baja" <?php if($tarea['prioridad'] == 'baja') echo 'selected'; ?>>Baja</option><option value="media" <?php if($tarea['prioridad'] == 'media') echo 'selected'; ?>>Media</option><option value="alta" <?php if($tarea['prioridad'] == 'alta') echo 'selected'; ?>>Alta</option></select></div>
+            <div class="form-group">
+                <label for="numero_piezas">Número de piezas</label>
+                <input type="number" id="numero_piezas" name="numero_piezas" value="<?php echo e($tarea['numero_piezas'] ?? 0); ?>" min="0">
+            </div>
+            <div class="form-group">
+                <label for="negocio">Negocio</label>
+                <select id="negocio" name="negocio">
+                    <option value="">Seleccione un negocio</option>
+                    <option value="Recreacion" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'Recreacion') echo 'selected'; ?>>Recreación</option>
+                    <option value="Educacion" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'Educacion') echo 'selected'; ?>>Educación</option>
+                    <option value="Gestion 4%" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'Gestion 4%') echo 'selected'; ?>>Gestión 4%</option>
+                    <option value="MPC" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'MPC') echo 'selected'; ?>>MPC</option>
+                    <option value="Credito" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'Credito') echo 'selected'; ?>>Crédito</option>
+                    <option value="Interna" <?php if(isset($tarea['negocio']) && $tarea['negocio'] == 'Interna') echo 'selected'; ?>>Interna</option>
+                </select>
+            </div>
             <hr><h4>Usuarios Asignados</h4>
             <div class="form-group"><div style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;">
                 <?php foreach ($usuarios_asignables as $usuario): ?><div><input type="checkbox" name="miembros_asignados[]" value="<?php echo $usuario['id_usuario']; ?>" id="usuario_<?php echo $usuario['id_usuario']; ?>" <?php if(in_array($usuario['id_usuario'], $ids_miembros_asignados)) echo 'checked'; ?>><label for="usuario_<?php echo $usuario['id_usuario']; ?>"><?php echo e($usuario['nombre_completo']); ?> (<?php echo e(ucfirst($usuario['rol'])); ?>)</label></div><?php endforeach; ?>
@@ -257,7 +275,27 @@ include '../includes/header_admin.php';
                 <?php foreach ($lista_comentarios as $comentario): ?>
                     <div class="comment <?php echo ($comentario['rol'] === 'admin' || $comentario['rol'] === 'analista') ? 'comment-admin' : 'comment-miembro'; ?>">
                         <p><strong><?php echo e($comentario['nombre_completo']); ?>:</strong></p>
-                        <p><?php echo nl2br(e($comentario['comentario'])); ?></p>
+                        <?php if (!empty($comentario['comentario'])): ?>
+                            <p><?php echo nl2br(e($comentario['comentario'])); ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($comentario['ruta_archivo'])): ?>
+                            <?php
+                            $ruta_archivo = e($comentario['ruta_archivo']);
+                            $nombre_archivo = e($comentario['nombre_archivo']);
+                            $extension = strtolower(pathinfo($ruta_archivo, PATHINFO_EXTENSION));
+                            $is_image = in_array($extension, ['jpg', 'jpeg', 'png', 'gif']);
+                            ?>
+                            <div class="attachment">
+                                <p><strong>Archivo adjunto:</strong></p>
+                                <a href="../<?php echo $ruta_archivo; ?>" target="_blank" class="resource-link">
+                                    <?php if ($is_image): ?>
+                                        <img src="../<?php echo $ruta_archivo; ?>" alt="<?php echo $nombre_archivo; ?>" style="max-width: 100px; max-height: 100px; border-radius: 5px; margin-top: 5px;">
+                                    <?php else: ?>
+                                        <i class="fas fa-file-alt"></i> <?php echo $nombre_archivo; ?>
+                                    <?php endif; ?>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                         <div class="meta"><?php echo date('d/m/Y H:i', strtotime($comentario['fecha_comentario'])); ?></div>
                     </div>
                 <?php endforeach; ?>

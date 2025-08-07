@@ -7,18 +7,14 @@ require_once '../libs/dompdf/autoload.inc.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_rol'], ['admin', 'analista', 'miembro'])) {
-    header("Location: " . BASE_URL . "/admin/login.php");
+if (!isset($_SESSION['user_id']) || $_SESSION['user_rol'] !== 'miembro') {
+    header("Location: login.php");
     exit();
 }
 
-$id_miembro_filtro = $_GET['id_miembro'] ?? null;
+$id_miembro_filtro = $_SESSION['user_id'];
 $fecha_inicio = $_GET['fecha_inicio'] ?? null;
 $fecha_fin = $_GET['fecha_fin'] ?? null;
-
-if ($_SESSION['user_rol'] === 'miembro' || $_SESSION['user_rol'] === 'analista') {
-    $id_miembro_filtro = $_SESSION['user_id'];
-}
 
 if (!$fecha_inicio || !$fecha_fin) {
     die("Por favor, especifique un rango de fechas.");
@@ -42,20 +38,13 @@ $query_tareas = "
         END) AS cumplimiento
     FROM tareas t
     JOIN usuarios uc ON t.id_admin_creador = uc.id_usuario
-    LEFT JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea
+    JOIN tareas_asignadas ta ON t.id_tarea = ta.id_tarea
+    WHERE t.fecha_creacion BETWEEN ? AND ? AND ta.id_usuario = ?
+    ORDER BY t.fecha_creacion DESC
 ";
 
-$params_tareas = [$fecha_inicio, $fecha_fin_sql];
-$where_tareas = " WHERE t.fecha_creacion BETWEEN ? AND ?";
-
-if ($id_miembro_filtro) {
-    $where_tareas .= " AND ta.id_usuario = ?";
-    $params_tareas[] = $id_miembro_filtro;
-}
-
-$query_tareas .= $where_tareas . " ORDER BY t.fecha_creacion DESC";
 $stmt_tareas = $pdo->prepare($query_tareas);
-$stmt_tareas->execute($params_tareas);
+$stmt_tareas->execute([$fecha_inicio, $fecha_fin_sql, $id_miembro_filtro]);
 $tareas = $stmt_tareas->fetchAll();
 
 $summary = [
@@ -83,12 +72,7 @@ foreach ($tareas as $tarea) {
     }
 }
 
-$miembro_nombre = 'Todos los miembros';
-if ($id_miembro_filtro) {
-    $stmt_nombre = $pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id_usuario = ?");
-    $stmt_nombre->execute([$id_miembro_filtro]);
-    $miembro_nombre = $stmt_nombre->fetchColumn();
-}
+$miembro_nombre = $_SESSION['user_nombre'];
 
 $html = '
 <!DOCTYPE html>
@@ -98,15 +82,15 @@ $html = '
     <title>Informe de Tareas</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
-        h1, h2 { text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        h1, h2, h3 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
-        .summary { margin-top: 20px; text-align: right; }
+        .summary { margin-top: 20px; text-align: right; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h1>Informe de Tareas</h1>
+    <h1>Informe de Mis Tareas</h1>
     <h2>Periodo: ' . date('d/m/Y', strtotime($fecha_inicio)) . ' - ' . date('d/m/Y', strtotime($fecha_fin)) . '</h2>
     <h3>Miembro: ' . e($miembro_nombre) . '</h3>
     <table>
@@ -116,9 +100,9 @@ $html = '
                 <th>Nombre Tarea</th>
                 <th>No Piezas</th>
                 <th>Negocio</th>
-                <th>Fecha Creaci®Æn</th>
+                <th>Fecha Creaci√≥n</th>
                 <th>Fecha Vencimiento</th>
-                <th>Fecha Finalizaci®Æn</th>
+                <th>Fecha Finalizaci√≥n</th>
                 <th>Cumplimiento</th>
             </tr>
         </thead>
@@ -164,4 +148,4 @@ $dompdf = new Dompdf($options);
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'landscape');
 $dompdf->render();
-$dompdf->stream("informe_tareas_" . date("Y-m-d") . ".pdf", ["Attachment" => 1]);
+$dompdf->stream("informe_mis_tareas_" . date("Y-m-d") . ".pdf", ["Attachment" => 1]);

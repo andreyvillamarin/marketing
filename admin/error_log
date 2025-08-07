@@ -3,3 +3,15 @@
 [04-Aug-2025 08:41:20 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 104
 [04-Aug-2025 08:41:20 America/Bogota] Error al enviar email a : Invalid address:  (to): 
 [04-Aug-2025 09:20:23 America/Bogota] PHP Notice:  session_start(): Ignoring session_start() because a session is already active (started from /home/qdosnetw/public_html/demos/marketing/includes/config.php on line 34) in /home/qdosnetw/public_html/demos/marketing/admin/generar_historial_pdf.php on line 14
+[07-Aug-2025 09:33:55 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:33:55 America/Bogota] Error al enviar email a : Invalid address:  (to): 
+[07-Aug-2025 09:33:55 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:33:55 America/Bogota] Error al enviar email a : Invalid address:  (to): 
+[07-Aug-2025 09:34:13 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:34:13 America/Bogota] Error al enviar email a : Invalid address:  (to): 
+[07-Aug-2025 09:34:13 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:34:13 America/Bogota] Error al enviar email a : Invalid address:  (to): 
+[07-Aug-2025 09:34:30 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:34:30 America/Bogota] Error al enviar email a : Invalid address:  (to): 
+[07-Aug-2025 09:34:30 America/Bogota] PHP Warning:  Undefined array key "email" in /home/qdosnetw/public_html/demos/marketing/admin/editar_tarea.php on line 106
+[07-Aug-2025 09:34:30 America/Bogota] Error al enviar email a : Invalid address:  (to): 
