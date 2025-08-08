@@ -20,7 +20,7 @@ define('SMTP_HOST', '');
 define('SMTP_USER', '');      // Línea 18
 define('SMTP_PASS', '');
 define('SMTP_PORT', 587);
-define('SMTP_SECURE', '');
+define('SMTP_SECURE', 'tls');
 define('EMAIL_FROM', '');
 define('EMAIL_FROM_NAME', 'Gestor de Tareas Comfamiliar');
 // ===================================================================
